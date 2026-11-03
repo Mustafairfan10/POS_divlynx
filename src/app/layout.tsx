@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Figtree, JetBrains_Mono, Unbounded } from "next/font/google";
 import { themeBootScript } from "@/client/theme";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+// Self-hosted at build time, so the type works offline too.
+const body = Figtree({ variable: "--font-body", subsets: ["latin"] });
+const display = Unbounded({ variable: "--font-disp", subsets: ["latin"], weight: ["500", "600", "700"] });
+const mono = JetBrains_Mono({ variable: "--font-code", subsets: ["latin"], weight: ["500", "700"] });
 
 export const metadata: Metadata = {
   title: "Cafe POS",
@@ -20,12 +22,12 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0f766e",
+  themeColor: "#15100c",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${body.variable} ${display.variable} ${mono.variable} antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>

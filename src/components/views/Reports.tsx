@@ -371,7 +371,7 @@ export function ReportsView() {
         {/* Header */}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-ink">Reports</h1>
+            <h1 className="display text-2xl font-semibold text-ink">Reports</h1>
             <p className="text-[15px] text-muted">{rangeLabel(range.from, range.to)}</p>
           </div>
           <div className="flex flex-wrap gap-2">

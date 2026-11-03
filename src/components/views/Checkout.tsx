@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   Banknote,
   Check,
-  CheckCircle2,
   CreditCard,
   FileText,
   Lock,
@@ -75,10 +74,12 @@ function Checkout({ order, payments }: { order: Order; payments: Payment[] }) {
   const slipKind = sum.balance > 0 ? "bill" : "receipt";
 
   const slip = (
-    <div className="rounded-2xl bg-surface-3 p-3 sm:p-6">
-      <div className="mx-auto max-w-[360px] overflow-hidden rounded-md shadow-pop">
+    <div className="rounded-[1.75rem] border border-line bg-surface-3/60 p-3 sm:p-8">
+      <div className="mx-auto max-w-[360px] -rotate-[0.6deg] transition-transform duration-300 hover:rotate-0" style={{ filter: "drop-shadow(0 18px 28px rgba(0,0,0,.35))" }}>
+<div className="torn">
         <Receipt order={order} payments={approved} settings={settings} kind={slipKind} tableName={tableName} />
       </div>
+</div>
       <div className="mx-auto mt-4 flex max-w-[360px] gap-2">
         <Button variant="outline" block icon={<FileText className="size-4" />} onClick={() => actions.printBill(order)}>
           Print bill
@@ -95,12 +96,12 @@ function Checkout({ order, payments }: { order: Order; payments: Payment[] }) {
   return (
     <div className="flex h-full flex-col">
       {/* Top bar */}
-      <div className="flex shrink-0 items-center gap-3 border-b border-line bg-surface px-3 py-2.5 sm:px-4">
+      <div className="glass flex shrink-0 items-center gap-3 border-b border-line px-3 py-2.5 sm:px-5">
         <Button variant="ghost" size="sm" icon={<ArrowLeft className="size-4" />} onClick={() => go("register")}>
           Order
         </Button>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-bold">Checkout · #{order.number}</p>
+          <p className="display truncate font-semibold">Checkout · #{order.number}</p>
           <p className="truncate text-xs text-muted">
             {order.type === "dine_in" ? `Dine-in${tableName ? ` · Table ${tableName}` : ""}` : order.type === "takeaway" ? "Takeaway" : "Delivery"}
             {order.customer.name ? ` · ${order.customer.name}` : ""} · {totals.itemCount} items
@@ -109,7 +110,7 @@ function Checkout({ order, payments }: { order: Order; payments: Payment[] }) {
         <PayStatusBadge status={order.status === "cancelled" ? "cancelled" : sum.status} />
       </div>
       {/* Phone/tablet tabs */}
-      <div className="shrink-0 border-b border-line bg-surface px-3 py-2 lg:hidden">
+      <div className="glass shrink-0 border-b border-line px-3 py-2 lg:hidden">
         <Segmented
           value={panel}
           onChange={setPanel}
@@ -450,20 +451,25 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
   return (
     <div className="flex flex-1 flex-col gap-4 p-3 sm:p-4">
       {/* Amount due */}
-      <div className={cx("rounded-3xl p-5 text-center", paid ? "bg-emerald-50 dark:bg-emerald-500/10" : sum.balance < 0 ? "bg-violet-50 dark:bg-violet-500/10" : "bg-surface-2 border border-line")}>
+      <div
+        className={cx(
+          "relative overflow-hidden rounded-[1.75rem] border p-6 text-center",
+          paid ? "border-emerald-500/30 bg-emerald-500/10" : sum.balance < 0 ? "border-violet-500/30 bg-violet-500/10" : "glass border-line",
+        )}
+      >
         {paid ? (
           <>
-            <CheckCircle2 className="mx-auto size-10 text-emerald-600" />
-            <p className="mt-2 text-sm font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Paid in full</p>
-            <p className="text-4xl font-bold tabular">{money(totals.total)}</p>
+            <PaidMoment />
+            <p className="relative mt-3 text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Paid in full</p>
+            <p className="display relative text-4xl font-semibold">{money(totals.total)}</p>
             {lastChange != null && lastChange > 0 && (
-              <p className="mt-2 rounded-xl bg-white/70 py-2 text-lg font-bold text-emerald-800 dark:bg-black/20 dark:text-emerald-200">Change due: {money(lastChange)}</p>
+              <p className="anim-rise relative mt-3 rounded-2xl bg-brand py-2.5 text-lg font-bold text-on-brand shadow-glow">Give change: {money(lastChange)}</p>
             )}
           </>
         ) : sum.balance < 0 ? (
           <>
             <p className="text-sm font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">Customer is owed</p>
-            <p className="text-4xl font-bold tabular">{money(-sum.balance)}</p>
+            <p className="display text-4xl font-semibold">{money(-sum.balance)}</p>
             <p className="mt-1 text-sm text-muted">The order now costs less than what was paid.</p>
             <Button className="mt-3" variant="primary" onClick={refundOverpayment} loading={busy}>
               Refund {money(-sum.balance)}
@@ -471,8 +477,8 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
           </>
         ) : (
           <>
-            <p className="text-sm font-semibold uppercase tracking-wider text-muted">{sum.paid > 0 ? "Remaining balance" : "Amount due"}</p>
-            <p className="text-5xl font-bold tracking-tight tabular">{money(sum.balance)}</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">{sum.paid > 0 ? "Remaining balance" : "Amount due"}</p>
+            <p key={sum.balance} className="display anim-bump mt-1 text-[3.25rem] font-semibold leading-none text-brand-ink">{money(sum.balance)}</p>
             {sum.paid > 0 && (
               <p className="mt-1 text-sm text-muted">
                 {money(sum.net)} of {money(totals.total)} paid
@@ -562,7 +568,7 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
                 onClick={() => setMethod(m.id)}
                 className={cx(
                   "flex h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 text-sm font-semibold transition active:scale-95",
-                  method === m.id ? "border-brand bg-brand-soft text-brand-ink" : "border-line bg-surface text-ink-2 hover:border-line-strong",
+                  method === m.id ? "border-brand bg-brand-soft text-brand-ink shadow-glow" : "border-line bg-surface text-ink-2 hover:border-line-strong",
                 )}
               >
                 <m.icon className="size-6" />
@@ -684,5 +690,20 @@ function Chip({ active, onClick, children }: { active?: boolean; onClick: () => 
     >
       {children}
     </button>
+  );
+}
+
+/** The checkout's celebratory beat: two light rings burst and a check mark draws itself. */
+function PaidMoment() {
+  return (
+    <div className="relative mx-auto flex size-20 items-center justify-center" aria-hidden>
+      <span className="absolute inset-0 rounded-full border-2 border-emerald-500/60" style={{ animation: "burst 1s ease-out forwards" }} />
+      <span className="absolute inset-0 rounded-full border-2 border-brand/60" style={{ animation: "burst 1.2s .15s ease-out forwards" }} />
+      <span className="flex size-20 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_10px_30px_-8px_rgba(16,185,129,.7)]">
+        <svg viewBox="0 0 24 24" className="size-10" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12.5l4.5 4.5L19 7.5" strokeDasharray="24" strokeDashoffset="24" style={{ animation: "draw .5s .2s ease-out forwards" }} />
+        </svg>
+      </span>
+    </div>
   );
 }

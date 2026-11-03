@@ -140,7 +140,7 @@ export function ItemModal({
                         on ? "border-brand bg-brand-soft" : err ? "border-rose-300" : "border-line hover:border-line-strong",
                       )}
                     >
-                      <span className={cx("flex size-5 shrink-0 items-center justify-center border-2", g.max === 1 ? "rounded-full" : "rounded-md", on ? "border-brand bg-brand text-white" : "border-line-strong")}>
+                      <span className={cx("flex size-5 shrink-0 items-center justify-center border-2", g.max === 1 ? "rounded-full" : "rounded-md", on ? "border-brand bg-brand text-on-brand" : "border-line-strong")}>
                         {on && <Check className="size-3" strokeWidth={4} />}
                       </span>
                       <span className="min-w-0 flex-1">

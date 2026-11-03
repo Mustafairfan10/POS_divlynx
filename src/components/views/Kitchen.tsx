@@ -8,9 +8,11 @@ import { useNow, useTables } from "@/client/hooks";
 import { now, updateOrder } from "@/client/repo";
 import { ORDER_TYPE_LABEL, timeAgo } from "@/lib/format";
 import type { Order, OrderItem, OrderType } from "@/lib/types";
-import { Button, EmptyState, Segmented, cx } from "../ui";
+import { EmptyState, Segmented, cx } from "../ui";
 
 const TYPE_ICON = { dine_in: UtensilsCrossed, takeaway: ShoppingBag, delivery: Bike };
+/** Dockets hang a little crooked on the rail, like real ones. */
+const TILT = [-0.7, 0.5, -0.3, 0.8, -0.5, 0.3];
 
 function useKitchenOrders() {
   return useLiveQuery(async () => {
@@ -118,12 +120,15 @@ export function KitchenView() {
   const list = show === "active" ? active : done;
 
   return (
-    <div className="flex h-full flex-col bg-bg">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface p-3 sm:p-4">
+    <div className="flex h-full flex-col">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line p-3 glass sm:p-4">
         <div className="mr-auto flex items-center gap-2">
           <ChefHat className="size-6 text-brand" />
-          <h1 className="text-xl font-bold">Kitchen</h1>
-          <span className="rounded-full bg-brand px-2.5 py-0.5 text-sm font-bold text-white dark:text-[#04201d]">{active.length}</span>
+          <h1 className="display text-xl font-semibold">Kitchen</h1>
+          <span className="rounded-full bg-brand px-2.5 py-0.5 text-sm font-bold text-on-brand">{active.length}</span>
+        <button onClick={() => setSound((s) => !s)} className="ml-1 flex size-10 items-center justify-center rounded-xl hover:bg-surface-3" aria-label={sound ? "Mute new-ticket chime" : "Unmute chime"}>
+          {sound ? <Bell className="size-5" /> : <BellOff className="size-5 text-muted" />}
+        </button>
         </div>
         <Segmented size="sm" className="w-48" value={show} onChange={setShow} options={[{ value: "active", label: "Active" }, { value: "done", label: "Recently done" }]} />
         <Segmented
@@ -133,96 +138,96 @@ export function KitchenView() {
           onChange={setFilter}
           options={[{ value: "all", label: "All" }, { value: "dine_in", label: "Dine-in" }, { value: "takeaway", label: "Takeaway" }, { value: "delivery", label: "Delivery" }]}
         />
-        <button onClick={() => setSound((s) => !s)} className="flex size-10 items-center justify-center rounded-xl hover:bg-surface-3" aria-label={sound ? "Mute new-ticket chime" : "Unmute chime"}>
-          {sound ? <Bell className="size-5" /> : <BellOff className="size-5 text-muted" />}
-        </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-6 pt-4 sm:px-6">
         {list.length === 0 ? (
           <EmptyState icon={<ChefHat className="size-7" />} title={show === "active" ? "All caught up" : "Nothing completed yet"}>
             {show === "active" ? "New tickets appear here as soon as orders are sent — even from other devices." : "Bumped tickets show here so you can recall them."}
           </EmptyState>
         ) : (
-          <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-            {list.map((o) => {
-              const sent = firstSent(o);
-              const mins = (nowTs - sent) / 60000;
-              const urgency = show === "done" ? "done" : mins >= 20 ? "late" : mins >= 10 ? "warn" : "ok";
-              const Icon = TYPE_ICON[o.type];
-              const visible = o.items.filter((i) => i.sentAt);
-              return (
-                <article key={o.id} className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
-                  <header
-                    className={cx(
-                      "flex items-center gap-3 px-4 py-3 text-white",
-                      urgency === "ok" && "bg-emerald-600",
-                      urgency === "warn" && "bg-amber-500 text-amber-950",
-                      urgency === "late" && "bg-rose-600",
-                      urgency === "done" && "bg-slate-500",
-                      o.status === "cancelled" && "bg-rose-800",
-                    )}
+          <>
+            {/* The pass: a steel ticket rail the dockets hang from. */}
+            <div className="ticket-rail mb-1 hidden sm:block" aria-hidden />
+            <div className="grid items-start gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+              {list.map((o, idx) => {
+                const sent = firstSent(o);
+                const mins = (nowTs - sent) / 60000;
+                const urgency = show === "done" ? "done" : mins >= 20 ? "late" : mins >= 10 ? "warn" : "ok";
+                const Icon = TYPE_ICON[o.type];
+                const visible = o.items.filter((i) => i.sentAt);
+                const left = visible.filter((i) => i.status === "sent" && !i.voided).length;
+                return (
+                  <article
+                    key={o.id}
+                    className="docket anim-rise relative"
+                    style={{ rotate: `${TILT[idx % TILT.length]}deg`, animationDelay: `${Math.min(idx, 8) * 40}ms` }}
                   >
-                    <Icon className="size-5" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xl font-extrabold leading-none tabular">#{o.number}</p>
-                      <p className="mt-0.5 truncate text-[13px] font-semibold opacity-90">
-                        {ORDER_TYPE_LABEL[o.type]}
-                        {o.type === "dine_in" && tableName(o.tableId) ? ` · Table ${tableName(o.tableId)}` : ""}
-                        {o.customer.name ? ` · ${o.customer.name}` : ""}
-                      </p>
-                    </div>
-                    <span className="rounded-lg bg-black/15 px-2 py-1 text-sm font-bold tabular">{timeAgo(sent, nowTs)}</span>
-                  </header>
-                  {o.status === "cancelled" && (
-                    <p className="flex items-center gap-2 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-                      <XCircle className="size-4" /> ORDER CANCELLED — stop preparing
-                    </p>
-                  )}
-                  <ul className="divide-y divide-line">
-                    {visible.map((it) => (
-                      <li key={it.id}>
-                        <button
-                          disabled={!!it.voided || o.status === "cancelled"}
-                          onClick={() => setItem(o, it, it.status === "sent" ? "ready" : "sent")}
-                          className={cx("flex w-full items-start gap-3 px-4 py-2.5 text-left transition hover:bg-surface-2", it.status !== "sent" && !it.voided && "opacity-50")}
-                        >
-                          <span
-                            className={cx(
-                              "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border-2",
-                              it.voided ? "border-rose-400" : it.status === "sent" ? "border-line-strong" : "border-emerald-600 bg-emerald-600 text-white",
-                            )}
+                    <span className="docket-clip" aria-hidden />
+                    <div className={cx("docket-heat", `heat-${urgency}`)} aria-hidden />
+                    <header className="flex items-start gap-3 px-4 pb-2 pt-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="docket-label">
+                          <Icon className="mr-1 inline size-3.5 -translate-y-px" />
+                          {ORDER_TYPE_LABEL[o.type]}
+                          {o.type === "dine_in" && tableName(o.tableId) ? ` · Table ${tableName(o.tableId)}` : ""}
+                        </p>
+                        <p className="display mt-1 text-[1.65rem] font-semibold leading-none">{o.number}</p>
+                        {o.customer.name && <p className="mt-1 truncate text-sm font-semibold">{o.customer.name}</p>}
+                      </div>
+                      <div className="text-right">
+                        <span className={cx("docket-timer", `heat-${urgency}`)}>{timeAgo(sent, nowTs)}</span>
+                        {show === "active" && (
+                          <p className="mt-1 text-xs font-semibold opacity-70">
+                            {left} to go
+                          </p>
+                        )}
+                      </div>
+                    </header>
+                    <div className="perf" aria-hidden />
+                    <ul className="px-2 py-1">
+                      {visible.map((it) => (
+                        <li key={it.id}>
+                          <button
+                            disabled={!!it.voided || o.status === "cancelled"}
+                            onClick={() => setItem(o, it, it.status === "sent" ? "ready" : "sent")}
+                            className={cx("docket-line flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left", it.status !== "sent" && !it.voided && "is-done")}
                           >
-                            {it.voided ? <XCircle className="size-4 text-rose-500" /> : it.status !== "sent" && <Check className="size-4" strokeWidth={3} />}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className={cx("block text-[17px] font-bold leading-snug", (it.voided || it.status !== "sent") && "line-through")}>
-                              {it.qty}× {it.name}
-                              {it.voided && <span className="ml-2 rounded bg-rose-600 px-1.5 py-px text-xs font-extrabold text-white no-underline">VOID</span>}
+                            <span className={cx("docket-check", it.voided ? "is-void" : it.status !== "sent" && "is-on")}>
+                              {it.voided ? <XCircle className="size-4" /> : it.status !== "sent" && <Check className="size-4" strokeWidth={3} />}
                             </span>
-                            {it.modifiers.length > 0 && <span className="block text-sm text-ink-2">{it.modifiers.map((m) => m.name).join(" · ")}</span>}
-                            {it.notes && <span className="mt-0.5 block rounded-md bg-amber-100 px-2 py-0.5 text-sm font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">⚠ {it.notes}</span>}
-                          </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="docket-item block text-[17px] font-bold leading-snug">
+                                <span className="display mr-1.5 text-[15px]">{it.qty}</span>
+                                {it.name}
+                                {it.voided && <span className="docket-void">VOID</span>}
+                              </span>
+                              {it.modifiers.length > 0 && <span className="block text-sm opacity-75">{it.modifiers.map((m) => m.name).join(" · ")}</span>}
+                              {it.notes && <span className="docket-note">{it.notes}</span>}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {o.note && <p className="mx-4 mb-2 border-l-4 border-current pl-2 text-sm font-semibold">Note: {o.note}</p>}
+                    <div className="px-3 pb-3 pt-1">
+                      {show === "active" ? (
+                        <button className={cx("docket-bump", o.status === "cancelled" && "is-cancel")} onClick={() => bump(o)}>
+                          <Check className="size-5" strokeWidth={3} />
+                          {o.status === "cancelled" ? "Dismiss" : "Bump · all ready"}
                         </button>
-                      </li>
-                    ))}
-                  </ul>
-                  {o.note && <p className="border-t border-line bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">Note: {o.note}</p>}
-                  <div className="border-t border-line p-2.5">
-                    {show === "active" ? (
-                      <Button variant={o.status === "cancelled" ? "danger" : "success"} size="lg" block icon={<Check className="size-5" />} onClick={() => bump(o)}>
-                        {o.status === "cancelled" ? "Dismiss" : "Bump · all ready"}
-                      </Button>
-                    ) : (
-                      <Button variant="outline" block icon={<RotateCcw className="size-4" />} onClick={() => recall(o)} disabled={o.status === "cancelled"}>
-                        Recall ticket
-                      </Button>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                      ) : (
+                        <button className="docket-bump is-ghost" onClick={() => recall(o)} disabled={o.status === "cancelled"}>
+                          <RotateCcw className="size-4" /> Recall ticket
+                        </button>
+                      )}
+                    </div>
+                    {o.status === "cancelled" && <span className="docket-stamp">Cancelled</span>}
+                  </article>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>

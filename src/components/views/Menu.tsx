@@ -90,10 +90,10 @@ export function MenuView() {
   const loading = !items || !categories || !groups;
 
   return (
-    <div className="flex h-full flex-col bg-bg">
-      <header className="shrink-0 border-b border-line bg-surface px-4 py-3 sm:px-6">
+    <div className="flex h-full flex-col">
+      <header className="glass shrink-0 border-b border-line px-4 py-3 sm:px-6">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl font-bold text-ink sm:text-2xl">Menu</h1>
+          <h1 className="display text-xl font-semibold text-ink sm:text-2xl">Menu</h1>
           <Segmented<Tab>
             value={tab}
             onChange={setTab}
@@ -180,7 +180,7 @@ function ItemsTab({
 
   return (
     <>
-      <div className="shrink-0 border-b border-line bg-surface-2 px-4 py-3 sm:px-6">
+      <div className="glass shrink-0 border-b border-line px-4 py-3 sm:px-6">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
           <div className="flex gap-2">
             <div className="relative min-w-0 flex-1">
@@ -503,7 +503,7 @@ function ItemEditor({
                     <span
                       className={cx(
                         "flex size-6 shrink-0 items-center justify-center rounded-md border text-xs font-bold",
-                        checked ? "border-brand bg-brand text-white dark:text-[#04201d]" : "border-line-strong bg-surface",
+                        checked ? "border-brand bg-brand text-on-brand" : "border-line-strong bg-surface",
                       )}
                     >
                       {checked ? pos + 1 : null}

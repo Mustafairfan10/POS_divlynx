@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   BarChart3,
+  Coffee,
   ChefHat,
   ClipboardList,
   CloudOff,
@@ -80,10 +81,46 @@ function Splash() {
 
 function Logo({ className }: { className?: string }) {
   return (
-    <div className={cx("flex items-center justify-center rounded-2xl bg-brand text-white dark:text-[#04201d]", className)}>
-      <UtensilsCrossed className="size-1/2" />
+    <div className={cx("flex items-center justify-center rounded-2xl bg-brand text-on-brand shadow-glow", className)}>
+      <Coffee className="size-1/2" strokeWidth={2.2} />
     </div>
   );
+}
+
+/** Warm ambient light + grain behind every screen. */
+function Ambient() {
+  return (
+    <div className="ambient" aria-hidden>
+      <div className="grain" />
+    </div>
+  );
+}
+
+/** A cup with rising steam: the login screen's one animated moment. */
+function SteamingCup() {
+  return (
+    <div className="relative h-40 w-44" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="absolute bottom-24 h-14 w-2.5 rounded-full bg-gradient-to-t from-brand/50 to-transparent blur-[3px]"
+          style={{ left: 58 + i * 22, animation: "steam 3.2s ease-out " + i * 0.9 + "s infinite" }}
+        />
+      ))}
+      <svg viewBox="0 0 176 120" className="absolute bottom-0 w-44">
+        <ellipse cx="80" cy="112" rx="72" ry="7" fill="var(--brand)" opacity="0.18" />
+        <path d="M24 34h112v34a46 46 0 0 1-46 46H70a46 46 0 0 1-46-46z" fill="var(--surface-3)" stroke="var(--brand)" strokeWidth="3" />
+        <path d="M136 46h10a18 18 0 0 1 0 36h-12" fill="none" stroke="var(--brand)" strokeWidth="3" strokeLinecap="round" />
+        <ellipse cx="80" cy="34" rx="56" ry="9" fill="var(--brand)" opacity="0.9" />
+        <ellipse cx="80" cy="33" rx="40" ry="5" fill="var(--on-brand)" opacity="0.25" />
+      </svg>
+    </div>
+  );
+}
+
+function greeting(d: Date | null) {
+  const h = d?.getHours() ?? 12;
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 
 // ------------------------------------------------------------------ Setup / pairing
@@ -128,14 +165,15 @@ function SetupScreen() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-dvh items-center justify-center p-4">
+      <Ambient />
+      <div className="anim-rise relative z-10 w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <Logo className="mb-4 size-16" />
-          <h1 className="text-2xl font-bold">Set up this device</h1>
+          <h1 className="display text-2xl font-semibold">Set up this device</h1>
           <p className="mt-1 text-[15px] text-muted">Connect this tablet, phone or computer to your store. You only need to do this once.</p>
         </div>
-        <div className="space-y-4 rounded-3xl border border-line bg-surface p-6 shadow-card">
+        <div className="glass space-y-4 rounded-[2rem] border border-line p-6 shadow-pop">
           {stage === "downloading" ? (
             <div className="flex flex-col items-center gap-3 py-8 text-center">
               <Spinner className="size-8" />
@@ -180,6 +218,14 @@ function LoginScreen() {
   const staffCount = useLiveQuery(() => db.staff.count(), []);
   const demo = useLiveQuery(() => usingDefaultAdminPin(), [staffCount]);
   const { status } = useSyncStatus();
+  const service = useLiveQuery(async () => {
+    const open = (await db.orders.where("status").equals("open").toArray()).filter((o) => !o.deleted);
+    return {
+      open: open.length,
+      kitchen: open.filter((o) => o.items.some((i) => i.status === "sent" && !i.voided)).length,
+      ready: open.filter((o) => o.items.some((i) => i.status === "ready" && !i.voided)).length,
+    };
+  }, []);
 
   useEffect(() => {
     setNow(new Date());
@@ -188,58 +234,84 @@ function LoginScreen() {
   }, []);
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-brand p-10 text-white lg:flex dark:text-[#04201d]">
-        <div className="flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-white/15">
-            <UtensilsCrossed className="size-6" />
+    <div className="relative min-h-dvh overflow-hidden">
+      <Ambient />
+      <div className="relative z-10 grid min-h-dvh lg:grid-cols-[1.15fr_1fr]">
+        <section className="hidden flex-col justify-between p-12 lg:flex">
+          <div className="flex items-center gap-3">
+            <Logo className="size-12" />
+            <div>
+              <p className="display text-lg font-semibold">{settings?.businessName ?? "POS"}</p>
+              <p className="text-sm text-muted">Point of sale</p>
+            </div>
           </div>
-          <span className="text-lg font-bold">{settings?.businessName ?? "POS"}</span>
-        </div>
-        <div>
-          <p className="text-7xl font-bold tabular tracking-tight">{now?.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</p>
-          <p className="mt-2 text-xl opacity-80">{now?.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</p>
-        </div>
-        <p className="text-sm opacity-70">Works offline · Syncs automatically across all your devices</p>
-        <div className="pointer-events-none absolute -bottom-24 -right-24 size-96 rounded-full bg-white/10" />
-        <div className="pointer-events-none absolute -right-10 bottom-40 size-40 rounded-full bg-white/10" />
+          <div className="anim-rise">
+            <SteamingCup />
+            <p className="mt-6 text-lg text-ink-2">{greeting(now)}</p>
+            <p className="display text-[clamp(4rem,9vw,7.5rem)] font-semibold leading-none">
+              {now?.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+            </p>
+            <p className="mt-3 text-xl text-muted">{now?.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</p>
+            {service && (
+              <div className="mt-8 flex flex-wrap gap-3">
+                <ServiceStat value={service.open} label={service.open === 1 ? "open check" : "open checks"} />
+                <ServiceStat value={service.kitchen} label="in the kitchen" />
+                <ServiceStat value={service.ready} label="ready to serve" />
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-muted">Works offline · syncs across every device in the store</p>
+        </section>
+
+        <section className="flex flex-col items-center justify-center p-6">
+          <div className="glass anim-rise w-full max-w-[400px] rounded-[2rem] border border-line p-7 shadow-pop">
+            <div className="mb-6 flex flex-col items-center text-center lg:hidden">
+              <Logo className="mb-3 size-14" />
+              <p className="display text-lg font-semibold">{settings?.businessName ?? "POS"}</p>
+              <p className="display mt-2 text-4xl font-semibold">{now?.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</p>
+            </div>
+            <h1 className="text-center text-2xl font-bold">Enter your PIN</h1>
+            <p className="mb-5 mt-1 text-center text-muted">Tap your 4-digit staff PIN to start your shift</p>
+            {staffCount === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-6 text-center text-muted">
+                <Spinner className="size-7" />
+                <p>{status.state === "offline" ? "Waiting for connection to download staff accounts…" : "Downloading store data…"}</p>
+              </div>
+            ) : (
+              <PinPad
+                error={error}
+                onComplete={async (pin) => {
+                  const s = await findStaffByPin(pin);
+                  if (!s) {
+                    setError("Incorrect PIN. Try again.");
+                    return false;
+                  }
+                  setError("");
+                  await setMeta("session", { staffId: s.id, at: Date.now() });
+                  return true;
+                }}
+              />
+            )}
+          </div>
+          {demo && (
+            <div className="mt-5 max-w-[400px] rounded-2xl border border-dashed border-line-strong px-4 py-3 text-center text-sm text-muted">
+              <p className="font-semibold text-ink-2">Demo PINs</p>
+              Admin <b className="tabular text-ink">{DEFAULT_PINS.admin}</b> · Manager <b className="tabular text-ink">{DEFAULT_PINS.manager}</b> · Cashier{" "}
+              <b className="tabular text-ink">{DEFAULT_PINS.cashier}</b> · Kitchen <b className="tabular text-ink">{DEFAULT_PINS.kitchen}</b>
+              <p className="mt-1 text-xs">Change the admin PIN in Settings → Staff to hide this.</p>
+            </div>
+          )}
+        </section>
       </div>
-      <div className="flex flex-col items-center justify-center p-6">
-        <div className="mb-8 flex flex-col items-center text-center lg:hidden">
-          <Logo className="mb-3 size-14" />
-          <p className="text-lg font-bold">{settings?.businessName ?? "POS"}</p>
-        </div>
-        <h1 className="text-2xl font-bold">Enter your PIN</h1>
-        <p className="mb-6 mt-1 text-muted">Tap your 4-digit staff PIN to start</p>
-        {staffCount === 0 ? (
-          <div className="flex flex-col items-center gap-3 text-center text-muted">
-            <Spinner className="size-7" />
-            <p>{status.state === "offline" ? "Waiting for connection to download staff accounts…" : "Downloading store data…"}</p>
-          </div>
-        ) : (
-          <PinPad
-            error={error}
-            onComplete={async (pin) => {
-              const s = await findStaffByPin(pin);
-              if (!s) {
-                setError("Incorrect PIN — try again");
-                return false;
-              }
-              setError("");
-              await setMeta("session", { staffId: s.id, at: Date.now() });
-              return true;
-            }}
-          />
-        )}
-        {demo && (
-          <div className="mt-8 max-w-[320px] rounded-2xl border border-dashed border-line-strong px-4 py-3 text-center text-sm text-muted">
-            <p className="font-semibold text-ink-2">Demo PINs</p>
-            Admin <b className="tabular">{DEFAULT_PINS.admin}</b> · Manager <b className="tabular">{DEFAULT_PINS.manager}</b> · Cashier{" "}
-            <b className="tabular">{DEFAULT_PINS.cashier}</b> · Kitchen <b className="tabular">{DEFAULT_PINS.kitchen}</b>
-            <p className="mt-1 text-xs">Change the admin PIN in Settings → Staff to hide this.</p>
-          </div>
-        )}
-      </div>
+    </div>
+  );
+}
+
+function ServiceStat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="glass min-w-28 rounded-2xl border border-line px-4 py-3">
+      <p className="display text-3xl font-semibold text-brand-ink">{value}</p>
+      <p className="text-sm text-muted">{label}</p>
     </div>
   );
 }
@@ -289,23 +361,28 @@ function Shell() {
   })();
 
   return (
-    <div className="flex h-dvh overflow-hidden">
+    <div className="relative flex h-dvh overflow-hidden">
+      <Ambient />
       {/* Desktop / landscape tablet rail */}
-      <nav className="hidden w-[88px] shrink-0 flex-col items-center gap-1 border-r border-line bg-surface py-3 lg:flex">
-        <Logo className="mb-3 size-11" />
-        {items.map((n) => (
-          <button
-            key={n.view}
-            onClick={() => go(n.view)}
-            className={cx(
-              "flex w-[72px] flex-col items-center gap-1 rounded-2xl py-2.5 text-[11px] font-semibold transition",
-              active === n.view ? "bg-brand-soft text-brand-ink" : "text-muted hover:bg-surface-3 hover:text-ink",
-            )}
-          >
-            <n.icon className="size-[22px]" />
-            {n.label}
-          </button>
-        ))}
+      <nav className="glass relative z-10 hidden w-[92px] shrink-0 flex-col items-center gap-1.5 border-r border-line py-4 lg:flex">
+        <Logo className="mb-4 size-12" />
+        {items.map((n) => {
+          const on = active === n.view;
+          return (
+            <button
+              key={n.view}
+              onClick={() => go(n.view)}
+              aria-current={on ? "page" : undefined}
+              className={cx(
+                "relative flex w-[74px] flex-col items-center gap-1 rounded-2xl py-2.5 text-[11px] font-semibold transition",
+                on ? "bg-brand-soft text-brand-ink" : "text-muted hover:bg-surface-3/70 hover:text-ink",
+              )}
+            >
+              <n.icon className="size-[22px]" strokeWidth={on ? 2.4 : 2} />
+              {n.label}
+            </button>
+          );
+        })}
         <div className="flex-1" />
         <button onClick={lock} className="flex w-[72px] flex-col items-center gap-1 rounded-2xl py-2.5 text-[11px] font-semibold text-muted transition hover:bg-surface-3 hover:text-ink">
           <Lock className="size-[22px]" />
@@ -313,11 +390,11 @@ function Shell() {
         </button>
       </nav>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 sm:px-4">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <header className="glass flex min-h-15 shrink-0 items-center gap-3 border-b border-line px-3 pt-[env(safe-area-inset-top)] sm:px-5">
           <Logo className="size-9 lg:hidden" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-bold leading-tight">{settings.businessName}</p>
+            <p className="display truncate text-[15px] font-semibold leading-tight">{settings.businessName}</p>
             <p className="truncate text-xs text-muted">
               {staff.name} · {ROLE_LABEL[staff.role]}
             </p>
@@ -337,12 +414,12 @@ function Shell() {
 
         {/* Phone / portrait tablet tab bar */}
         {items.length > 1 && (
-          <nav className="flex shrink-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
+          <nav className="glass flex shrink-0 border-t border-line pb-[env(safe-area-inset-bottom)] lg:hidden">
             {primary.map((n) => (
               <button
                 key={n.view}
                 onClick={() => go(n.view)}
-                className={cx("flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold", active === n.view ? "text-brand" : "text-muted")}
+                className={cx("flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold", active === n.view ? "text-brand-ink" : "text-muted")}
               >
                 <n.icon className="size-[22px]" />
                 {n.label}
@@ -369,7 +446,7 @@ function Shell() {
               }}
               className="flex flex-col items-center gap-2 rounded-2xl border border-line bg-surface-2 py-5 text-sm font-semibold hover:bg-surface-3"
             >
-              <n.icon className="size-6 text-brand" />
+              <n.icon className="size-6 text-brand-ink" />
               {n.label}
             </button>
           ))}
@@ -380,7 +457,7 @@ function Shell() {
             }}
             className="flex flex-col items-center gap-2 rounded-2xl border border-line bg-surface-2 py-5 text-sm font-semibold hover:bg-surface-3"
           >
-            <Lock className="size-6 text-brand" />
+            <Lock className="size-6 text-brand-ink" />
             Lock / switch user
           </button>
         </div>

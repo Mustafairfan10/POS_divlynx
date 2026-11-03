@@ -104,9 +104,9 @@ export function OrdersView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="space-y-3 border-b border-line bg-surface p-3 sm:p-4">
+      <div className="glass space-y-3 border-b border-line p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="mr-auto text-xl font-bold">Orders</h1>
+          <h1 className="display mr-auto text-xl font-semibold">Orders</h1>
           {tab !== "active" && (
             <Segmented size="sm" className="w-64" value={range} onChange={setRange} options={[{ value: "today", label: "Today" }, { value: "week", label: "7 days" }, { value: "month", label: "30 days" }]} />
           )}
@@ -171,7 +171,7 @@ export function OrdersView() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="font-bold tabular">#{o.number}</span>
+                      <span className="display font-semibold">#{o.number}</span>
                       <span className="truncate text-sm text-ink-2">{where}</span>
                     </span>
                     <span className="mt-0.5 block truncate text-[13px] text-muted">
@@ -188,7 +188,7 @@ export function OrdersView() {
                     </span>
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className="block text-lg font-bold tabular">{money(t.total)}</span>
+                    <span className="display block text-lg font-semibold">{money(t.total)}</span>
                     {s.balance > 0 && s.paid > 0 && <span className="block text-xs font-semibold text-sky-700 dark:text-sky-300">{money(s.balance)} due</span>}
                   </span>
                 </button>
@@ -242,9 +242,11 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string | null;
           <Segmented size="sm" className="mb-3 w-64" value={tab} onChange={setTab} options={[{ value: "slip", label: "Receipt" }, { value: "history", label: `History (${order.log.length})` }]} />
           {tab === "slip" ? (
             <div className="rounded-2xl bg-surface-3 p-3 sm:p-5">
-              <div className="mx-auto max-w-[340px] overflow-hidden rounded-md shadow-pop">
+              <div className="mx-auto max-w-[340px]" style={{ filter: "drop-shadow(0 18px 28px rgba(0,0,0,.35))" }}>
+<div className="torn">
                 <Receipt order={order} payments={approved} settings={settings} kind={s.balance > 0 ? "bill" : "receipt"} tableName={tableName} />
               </div>
+</div>
             </div>
           ) : (
             <ol className="relative ml-3 border-l-2 border-line pl-5">

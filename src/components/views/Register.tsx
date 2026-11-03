@@ -40,6 +40,7 @@ import { ORDER_TYPE_LABEL, uid } from "@/lib/format";
 import type { MenuItem, Order, OrderItem, OrderType } from "@/lib/types";
 import { Badge, Button, EmptyState, Modal, Segmented, cx, useBusy, useConfirm, useToast } from "../ui";
 import { ItemModal, type ItemChoice } from "../ItemModal";
+import { categoryIcon } from "../categoryIcon";
 import { OrderLines } from "../OrderLines";
 import { CustomerModal, DiscountModal, NoteModal, TablePickerModal, useMoney, useOrderActions } from "../orderActions";
 
@@ -125,7 +126,10 @@ export function RegisterView() {
     const term = q.trim().toLowerCase();
     return (items ?? []).filter((i) => (term ? i.name.toLowerCase().includes(term) : cat === "all" || i.categoryId === cat));
   }, [items, cat, q]);
-  const catColor = useMemo(() => new Map((categories ?? []).map((c) => [c.id, c.color])), [categories]);
+  const groupName = useMemo(() => new Map((groups ?? []).map((g) => [g.id, g.name])), [groups]);
+  const catById = useMemo(() => new Map((categories ?? []).map((c) => [c.id, c])), [categories]);
+  // Visual feedback when an item lands in the order: the tile pops and the cart count bumps.
+  const [popped, setPopped] = useState<{ id: string; n: number } | null>(null);
   const qtyInCart = useMemo(() => {
     const m = new Map<string, number>();
     for (const it of activeItems(order)) m.set(it.menuItemId, (m.get(it.menuItemId) ?? 0) + it.qty);
@@ -150,6 +154,7 @@ export function RegisterView() {
   }
 
   function tapItem(mi: MenuItem) {
+    setPopped((p) => ({ id: mi.id, n: (p?.n ?? 0) + 1 }));
     if (locked) {
       toast.warning(order.status === "cancelled" ? "This order is cancelled. Start a new order." : "This order is paid. Unlock it to make changes.");
       return;
@@ -277,15 +282,15 @@ export function RegisterView() {
 
   // ------------------------------------------------------------ render
   const cart = (
-    <div className="flex h-full flex-col bg-surface">
+    <div className="glass flex h-full flex-col">
       {/* Cart header */}
-      <div className="space-y-3 border-b border-line p-3 sm:p-4">
+      <div className="space-y-3 p-3 pb-4 sm:p-4">
         <div className="flex items-center gap-2">
           <button className="flex size-10 items-center justify-center rounded-xl hover:bg-surface-3 lg:hidden" onClick={() => setCartOpen(false)} aria-label="Close order">
             <X className="size-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-lg font-bold leading-tight">{order.number ? `Order #${order.number}` : "New order"}</p>
+            <p className="display text-lg font-semibold leading-tight">{order.number ? `#${order.number}` : "New order"}</p>
             <p className="text-xs text-muted">
               {saved ? `Started by ${order.createdBy}` : "Add items to start"}
               {order.status === "closed" && " · Paid"}
@@ -329,6 +334,7 @@ export function RegisterView() {
         )}
       </div>
 
+      <div className="stub-perf" aria-hidden />
       {/* Lines */}
       <div className="min-h-0 flex-1 overflow-y-auto px-3 sm:px-4">
         {locked && (
@@ -360,7 +366,7 @@ export function RegisterView() {
       </div>
 
       {/* Totals & actions */}
-      <div className="border-t border-line bg-surface-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
+      <div className="border-t border-line bg-surface-2/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
         <dl className="mb-3 space-y-1 text-sm">
           <TotalRow label="Subtotal" value={money(totals.subtotal)} />
           {totals.discount > 0 && <TotalRow label={`Discount${order.discount?.type === "percent" ? ` (${order.discount.value}%)` : ""}`} value={`−${money(totals.discount)}`} accent />}
@@ -369,7 +375,7 @@ export function RegisterView() {
           <TotalRow label={order.taxInclusive ? `Tax incl. ${order.taxRate}%` : `Tax ${order.taxRate}%`} value={money(totals.tax)} />
           <div className="flex items-baseline justify-between pt-1">
             <dt className="text-base font-bold">Total</dt>
-            <dd className="text-2xl font-bold tabular">{money(totals.total)}</dd>
+            <dd key={totals.total} className="display anim-bump text-[1.7rem] font-semibold text-brand-ink">{money(totals.total)}</dd>
           </div>
         </dl>
         <div className="flex gap-2">
@@ -391,7 +397,7 @@ export function RegisterView() {
     <div className="flex h-full">
       {/* Menu */}
       <section className="flex min-w-0 flex-1 flex-col">
-        <div className="space-y-3 border-b border-line bg-surface px-3 pb-3 pt-3 sm:px-4">
+        <div className="space-y-3 px-3 pb-2 pt-3 sm:px-5 sm:pt-4">
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-muted" />
@@ -399,7 +405,7 @@ export function RegisterView() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search menu"
-                className="h-11 w-full rounded-xl border border-line-strong bg-surface pl-11 pr-10 text-[15px] outline-none focus:border-brand focus:ring-4 focus:ring-[var(--ring)]"
+                className="glass h-12 w-full rounded-2xl border border-line pl-11 pr-10 text-[15px] outline-none transition focus:border-brand focus:ring-4 focus:ring-[var(--ring)]"
               />
               {q && (
                 <button onClick={() => setQ("")} className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted hover:bg-surface-3" aria-label="Clear search">
@@ -409,46 +415,68 @@ export function RegisterView() {
             </div>
             <Button variant="outline" onClick={() => go("orders")} icon={<ClipboardList className="size-4" />} className="shrink-0">
               <span className="hidden sm:inline">Open orders</span>
-              {otherOpen > 0 && <span className="rounded-full bg-brand px-1.5 text-xs text-white dark:text-[#04201d]">{otherOpen}</span>}
+              {otherOpen > 0 && <span className="rounded-full bg-brand px-1.5 text-xs text-on-brand">{otherOpen}</span>}
             </Button>
           </div>
           <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-0.5 sm:-mx-4 sm:px-4">
-            <CategoryChip active={cat === "all" && !q} onClick={() => { setCat("all"); setQ(""); }} label="All" />
+            <CategoryChip active={cat === "all" && !q} onClick={() => { setCat("all"); setQ(""); }} label="All" icon={UtensilsCrossed} />
             {(categories ?? []).map((c) => (
-              <CategoryChip key={c.id} active={cat === c.id && !q} color={c.color} onClick={() => { setCat(c.id); setQ(""); }} label={c.name} />
+              <CategoryChip key={c.id} active={cat === c.id && !q} color={c.color} icon={categoryIcon(c.name)} onClick={() => { setCat(c.id); setQ(""); }} label={c.name} />
             ))}
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-24 sm:p-4 lg:pb-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-24 pt-2 sm:px-5 lg:pb-5">
           {visible.length === 0 ? (
             <EmptyState icon={<Search className="size-7" />} title={items?.length ? "No matching items" : "Your menu is empty"}>
               {items?.length ? "Try a different search or category." : "Add categories and items in the Menu section."}
             </EmptyState>
           ) : (
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {visible.map((mi) => {
                 const n = qtyInCart.get(mi.id);
+                const c = catById.get(mi.categoryId);
+                const tint = c?.color ?? "#8a6a4a";
+                const Icon = categoryIcon(c?.name);
+                const pop = popped?.id === mi.id;
                 return (
                   <button
-                    key={mi.id}
+                    key={mi.id + (pop ? ":" + popped.n : "")}
                     onClick={() => tapItem(mi)}
+                    style={{
+                      backgroundImage: `linear-gradient(150deg, color-mix(in oklab, ${tint} 30%, transparent) 0%, transparent 62%)`,
+                    }}
                     className={cx(
-                      "relative flex min-h-[104px] flex-col justify-between overflow-hidden rounded-2xl border border-line bg-surface p-3 pl-4 text-left shadow-card transition hover:border-line-strong active:scale-[0.97]",
-                      !mi.available && "opacity-55",
+                      "group relative flex min-h-[118px] flex-col justify-between overflow-hidden rounded-[1.25rem] border bg-surface p-3.5 text-left shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-pop",
+                      n ? "border-brand/60" : "border-line hover:border-line-strong",
+                      pop && "anim-tile",
+                      !mi.available && "opacity-50 saturate-50",
                     )}
                   >
-                    <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: catColor.get(mi.categoryId) ?? "var(--line-strong)" }} />
-                    <span className="line-clamp-2 text-[15px] font-semibold leading-snug">{mi.name}</span>
-                    <span className="mt-2 flex items-end justify-between gap-1">
-                      <span className="text-[15px] font-bold tabular text-ink-2">{money(mi.price)}</span>
+                    <Icon
+                      aria-hidden
+                      className="pointer-events-none absolute -bottom-3 -right-3 size-20 opacity-[0.13] transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110"
+                      style={{ color: tint }}
+                      strokeWidth={1.5}
+                    />
+                    {pop && <span className="pointer-events-none absolute left-1/2 top-1/2 size-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/30" style={{ animation: "ripple .55s ease-out forwards" }} />}
+                    <span className="relative line-clamp-2 pr-6 text-[15px] font-semibold leading-snug">{mi.name}</span>
+                    <span className="relative mt-3 flex items-end justify-between gap-1">
+                      <span className="display text-[15px] font-semibold text-ink">{money(mi.price)}</span>
                       {!mi.available ? (
                         <Badge tone="red">Sold out</Badge>
                       ) : mi.modifierGroupIds.length ? (
-                        <span className="text-[11px] font-semibold text-muted">Options</span>
+                        <span className="truncate text-right text-[11px] font-semibold text-muted">
+                          {mi.modifierGroupIds
+                            .slice(0, 2)
+                            .map((id) => groupName.get(id))
+                            .filter(Boolean)
+                            .join(" · ")}
+                          {mi.modifierGroupIds.length > 2 ? " +" : ""}
+                        </span>
                       ) : null}
                     </span>
                     {n ? (
-                      <span className="absolute right-2 top-2 flex min-w-6 items-center justify-center rounded-full bg-brand px-1.5 py-0.5 text-xs font-bold text-white dark:text-[#04201d]">{n}</span>
+                      <span key={n} className="anim-bump absolute right-2.5 top-2.5 flex min-w-6 items-center justify-center rounded-full bg-brand px-1.5 py-0.5 text-xs font-bold text-on-brand shadow-glow">{n}</span>
                     ) : null}
                   </button>
                 );
@@ -460,18 +488,18 @@ export function RegisterView() {
         <div className="fixed inset-x-3 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-20 lg:hidden">
           <button
             onClick={() => setCartOpen(true)}
-            className="flex h-14 w-full items-center gap-3 rounded-2xl bg-brand px-4 text-white shadow-pop active:scale-[0.99] dark:text-[#04201d]"
+            className="flex h-15 w-full items-center gap-3 rounded-2xl bg-brand px-4 text-on-brand shadow-glow active:scale-[0.99]"
           >
-            <span className="flex size-8 items-center justify-center rounded-lg bg-white/20 text-sm font-bold tabular">{totals.itemCount}</span>
+            <span key={totals.itemCount} className="anim-bump flex size-9 items-center justify-center rounded-xl bg-black/10 text-sm font-bold tabular">{totals.itemCount}</span>
             <span className="flex-1 text-left font-semibold">{order.number ? `Review #${order.number}` : "Review order"}</span>
-            <span className="text-lg font-bold tabular">{money(totals.total)}</span>
+            <span className="display text-lg font-semibold">{money(totals.total)}</span>
             <ChevronRight className="size-5" />
           </button>
         </div>
       </section>
 
       {/* Cart: side panel on large screens, full-screen sheet on phones/tablets */}
-      <aside className="hidden w-[380px] shrink-0 border-l border-line lg:block xl:w-[420px]">{cart}</aside>
+      <aside className="hidden w-[390px] shrink-0 border-l border-line lg:block xl:w-[430px]">{cart}</aside>
       {cartOpen && <div className="anim-sheet fixed inset-0 z-40 lg:hidden">{cart}</div>}
 
       {/* Dialogs */}
@@ -563,16 +591,17 @@ function ContextButton({ icon, label, sub, onClick, warn }: { icon: React.ReactN
   );
 }
 
-function CategoryChip({ label, active, onClick, color }: { label: string; active: boolean; onClick: () => void; color?: string }) {
+function CategoryChip({ label, active, onClick, color, icon: Icon }: { label: string; active: boolean; onClick: () => void; color?: string; icon: typeof Plus }) {
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       className={cx(
-        "flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition",
-        active ? "border-transparent bg-ink text-surface" : "border-line-strong bg-surface text-ink-2 hover:bg-surface-3",
+        "flex h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition",
+        active ? "border-brand bg-brand text-on-brand shadow-glow" : "glass border-line text-ink-2 hover:border-line-strong hover:text-ink",
       )}
     >
-      {color && <span className="size-2.5 rounded-full" style={{ background: color }} />}
+      <Icon className="size-4" style={!active && color ? { color } : undefined} />
       {label}
     </button>
   );

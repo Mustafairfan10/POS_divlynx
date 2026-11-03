@@ -41,9 +41,9 @@ export function TablesView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center gap-3 border-b border-line bg-surface p-3 sm:p-4">
+      <div className="flex flex-wrap items-center gap-3 border-b border-line p-3 glass sm:p-4">
         <div className="mr-auto">
-          <h1 className="text-xl font-bold">Tables</h1>
+          <h1 className="display text-xl font-semibold">Tables</h1>
           <p className="text-sm text-muted">
             {occupiedCount} of {tables.length} occupied
           </p>
@@ -56,69 +56,82 @@ export function TablesView() {
           ))}
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
-        <div className="mb-3 flex flex-wrap gap-3 text-xs font-semibold text-muted">
-          <Legend cls="border-line bg-surface" label="Free" />
-          <Legend cls="border-sky-300 bg-sky-50 dark:bg-sky-500/10 dark:border-sky-500/40" label="Seated" />
-          <Legend cls="border-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/40" label="Food ready" />
-          <Legend cls="border-amber-400 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/40" label="Check printed" />
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
+        <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-muted">
+          <Legend cls="border-line-strong bg-surface" label="Free" />
+          <Legend cls="border-sky-400 bg-sky-500/20" label="Seated" />
+          <Legend cls="border-emerald-400 bg-emerald-500/25" label="Food ready to run" />
+          <Legend cls="border-amber-400 bg-amber-500/25" label="Check printed" />
+          <span className="flex items-center gap-1.5">
+            <span className="chair !static" style={{ background: "var(--brand)" }} /> Occupied seat
+          </span>
         </div>
         {tables.length === 0 ? (
           <EmptyState icon={<LayoutGrid className="size-7" />} title="No tables yet">
             Add your tables in Settings → Tables.
           </EmptyState>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-            {shown.map((t) => {
-              const orders = byTable.get(t.id) ?? [];
-              const o = orders[0];
-              const total = orders.reduce((s, x) => s + computeTotals(x).total, 0);
-              const due = orders.reduce((s, x) => s + summarizePayments(computeTotals(x).total, pays?.get(x.id) ?? []).balance, 0);
-              const ready = orders.some((x) => x.items.some((i) => i.status === "ready" && !i.voided));
-              const billed = orders.some((x) => x.billPrintedAt);
-              const state = !o ? "free" : ready ? "ready" : billed ? "billed" : "seated";
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => (o ? setSelected(t) : setNewFor(t))}
-                  className={cx(
-                    "relative flex min-h-36 flex-col rounded-2xl border-2 p-3.5 text-left transition active:scale-[0.98]",
-                    state === "free" && "border-line bg-surface hover:border-line-strong",
-                    state === "seated" && "border-sky-300 bg-sky-50 dark:border-sky-500/40 dark:bg-sky-500/10",
-                    state === "ready" && "border-emerald-400 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10",
-                    state === "billed" && "border-amber-400 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-2xl font-bold">{t.name}</span>
-                    <span className="flex items-center gap-1 text-xs font-semibold text-muted">
-                      <Users className="size-3.5" />
-                      {o?.guests ?? t.seats}
-                      {!o && " seats"}
-                    </span>
-                  </div>
-                  {o ? (
-                    <div className="mt-auto space-y-1">
-                      <p className="text-sm font-semibold tabular">
-                        #{o.number} · {timeAgo(o.createdAt, nowTs)}
+          <div className="space-y-5">
+            {areas
+              .filter((a) => area === "all" || a === area)
+              .map((a) => {
+                const inArea = shown.filter((t) => (t.area || "Main") === a);
+                const free = inArea.filter((t) => !byTable.has(t.id)).length;
+                const patio = /patio|terrace|garden|outdoor|deck/i.test(a);
+                return (
+                  <section key={a} className={cx("floor overflow-hidden rounded-[1.75rem] border border-line", patio && "floor-patio")}>
+                    <header className="flex items-baseline justify-between gap-3 px-5 pt-4">
+                      <h2 className="display text-base font-semibold">{a}</h2>
+                      <p className="text-sm text-muted">
+                        {free} of {inArea.length} free
                       </p>
-                      <p className="text-lg font-bold tabular">{money(due > 0 ? due : total)}</p>
-                      <div className="flex flex-wrap gap-1">
-                        {ready && <Badge tone="green">Food ready</Badge>}
-                        {billed && !ready && <Badge tone="amber">Check printed</Badge>}
-                        {orders.length > 1 && (
-                          <Badge tone="red">
-                            <AlertTriangle className="size-3" /> {orders.length} checks
-                          </Badge>
-                        )}
-                      </div>
+                    </header>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-x-2 gap-y-4 p-4 pt-2">
+                      {inArea.map((t) => {
+                        const orders = byTable.get(t.id) ?? [];
+                        const o = orders[0];
+                        const total = orders.reduce((s, x) => s + computeTotals(x).total, 0);
+                        const due = orders.reduce((s, x) => s + summarizePayments(computeTotals(x).total, pays?.get(x.id) ?? []).balance, 0);
+                        const ready = orders.some((x) => x.items.some((i) => i.status === "ready" && !i.voided));
+                        const billed = orders.some((x) => x.billPrintedAt);
+                        const state = !o ? "free" : ready ? "ready" : billed ? "billed" : "seated";
+                        const guests = o?.guests ?? 0;
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => (o ? setSelected(t) : setNewFor(t))}
+                            className="group flex flex-col items-center gap-1.5 rounded-2xl py-1 transition active:scale-[0.97]"
+                          >
+                            <TableShape seats={t.seats} occupied={guests} state={state}>
+                              <span className="display block text-xl font-semibold leading-none">{t.name}</span>
+                              <span className="mt-1 block text-[11px] font-semibold opacity-75">
+                                {o ? `${guests}/${t.seats}` : `${t.seats} seats`}
+                              </span>
+                            </TableShape>
+                            {o ? (
+                              <span className="flex flex-col items-center leading-tight">
+                                <span className="text-[13px] font-semibold text-ink-2">
+                                  #{o.number} · {timeAgo(o.createdAt, nowTs)}
+                                </span>
+                                <span className="display text-[15px] font-semibold">{money(due > 0 ? due : total)}</span>
+                                {ready && <Badge tone="green" className="mt-1">Food ready</Badge>}
+                                {billed && !ready && <Badge tone="amber" className="mt-1">Check printed</Badge>}
+                                {orders.length > 1 && (
+                                  <Badge tone="red" className="mt-1">
+                                    <AlertTriangle className="size-3" /> {orders.length} checks
+                                  </Badge>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-[13px] font-semibold text-muted">Free · tap to seat</span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
-                  ) : (
-                    <p className="mt-auto text-sm font-semibold text-muted">Free · tap to seat</p>
-                  )}
-                </button>
-              );
-            })}
+                  </section>
+                );
+              })}
           </div>
         )}
       </div>
@@ -146,10 +159,59 @@ export function TablesView() {
   );
 }
 
+const TOP: Record<string, string> = {
+  free: "border-line-strong bg-surface text-ink",
+  seated: "border-sky-400 bg-sky-500/20 text-ink",
+  ready: "border-emerald-400 bg-emerald-500/25 text-ink",
+  billed: "border-amber-400 bg-amber-500/25 text-ink",
+};
+
+/**
+ * A table drawn from above: a round top (square for two-tops) with one chair per seat.
+ * Occupied seats are filled in, so you can read how full the room is at a glance.
+ */
+function TableShape({ seats, occupied, state, children }: { seats: number; occupied: number; state: string; children: React.ReactNode }) {
+  const n = Math.max(1, Math.min(seats, 12));
+  const size = 128;
+  const c = size / 2;
+  const twoTop = n <= 2;
+  const r = twoTop ? 50 : 56;
+  return (
+    <span className="relative block" style={{ width: size, height: size }}>
+      {Array.from({ length: n }, (_, i) => {
+        const deg = twoTop ? (i === 0 ? -90 : 90) : (360 / n) * i - 90;
+        const rad = (deg * Math.PI) / 180;
+        return (
+          <span
+            key={i}
+            className="chair"
+            style={{
+              left: c + r * Math.cos(rad) - 11,
+              top: c + r * Math.sin(rad) - 5,
+              rotate: `${deg + 90}deg`,
+              background: i < occupied ? "var(--brand)" : undefined,
+            }}
+          />
+        );
+      })}
+      <span
+        className={cx(
+          "absolute flex flex-col items-center justify-center border-2 text-center shadow-card transition group-hover:shadow-pop",
+          twoTop ? "inset-[30px] rounded-xl" : "inset-[22px] rounded-full",
+          TOP[state],
+        )}
+      >
+        {state === "ready" && <span className="absolute inset-[-6px] animate-ping rounded-[inherit] border-2 border-emerald-400/60" aria-hidden />}
+        {children}
+      </span>
+    </span>
+  );
+}
+
 function Legend({ cls, label }: { cls: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span className={cx("size-3.5 rounded border-2", cls)} />
+      <span className={cx("size-3.5 rounded-full border-2", cls)} />
       {label}
     </span>
   );

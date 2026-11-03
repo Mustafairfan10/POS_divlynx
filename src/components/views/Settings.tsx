@@ -123,8 +123,8 @@ export function SettingsView() {
   return (
     <div className="flex h-full flex-col md:flex-row">
       {/* Navigation */}
-      <nav aria-label="Settings sections" className="shrink-0 border-b border-line bg-surface md:w-60 md:overflow-y-auto md:border-b-0 md:border-r">
-        <h1 className="hidden px-5 pb-2 pt-5 text-xl font-bold text-ink md:block">Settings</h1>
+      <nav aria-label="Settings sections" className="glass shrink-0 border-b border-line md:w-60 md:overflow-y-auto md:border-b-0 md:border-r">
+        <h1 className="display hidden px-5 pb-2 pt-5 text-xl font-semibold text-ink md:block">Settings</h1>
         <div className="flex gap-2 overflow-x-auto px-3 py-2.5 md:flex-col md:gap-1 md:overflow-visible md:px-3 md:py-2">
           {sections.map((s) => (
             <button
@@ -564,9 +564,11 @@ function ReceiptSection({ value, patch }: Omit<DraftProps, "errors">) {
       </Panel>
       <div>
         <p className="mb-2 px-1 text-sm font-semibold text-muted">Live preview</p>
-        <div className="rounded-2xl bg-neutral-300 p-4 sm:p-6 dark:bg-neutral-800" aria-label="Receipt preview">
-          <div className="mx-auto shadow-lg" style={{ maxWidth: value.paperWidth === "58" ? "58mm" : "80mm" }}>
-            <SampleReceipt settings={previewSettings} by={staff.name} now={now} />
+        <div className="rounded-[1.75rem] border border-line bg-surface-3/60 p-4 sm:p-6" aria-label="Receipt preview">
+          <div className="mx-auto" style={{ maxWidth: value.paperWidth === "58" ? "58mm" : "80mm", filter: "drop-shadow(0 18px 28px rgba(0,0,0,.35))" }}>
+            <div className="torn">
+              <SampleReceipt settings={previewSettings} by={staff.name} now={now} />
+            </div>
           </div>
         </div>
       </div>

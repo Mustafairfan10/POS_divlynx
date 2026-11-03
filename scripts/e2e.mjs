@@ -150,7 +150,14 @@ try {
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
   await click("Tables");
   await expectText("occupied");
-  await click("T3");
+  const tableName = await page.evaluate(() => {
+    const free = [...document.querySelectorAll("button")].find((b) => b.innerText.includes("tap to seat"));
+    const name = free?.innerText.trim().split(/\s/)[0] ?? "";
+    free?.click();
+    return name;
+  });
+  if (!tableName) throw new Error("No free table to seat");
+  await sleep(300);
   await click("Start order");
   await click("Classic Burger");
   await click("Add ·");
@@ -163,7 +170,7 @@ try {
     r.onsuccess = () => { const tx = r.result.transaction("outbox"); const c = tx.objectStore("outbox").count(); c.onsuccess = () => res(c.result); };
   }));
   if (!pendingOffline) throw new Error("Expected pending changes in outbox while offline");
-  log(`Offline: dine-in order saved locally, ${pendingOffline} change(s) queued`);
+  log(`Offline: table ${tableName} seated, order saved locally, ${pendingOffline} change(s) queued`);
 
   // 8. Reconnect → auto sync
   await page.setOfflineMode(false);
@@ -196,12 +203,26 @@ try {
   log("Second device (phone, kitchen role) paired and sees the burger ticket");
 
   // Kitchen bumps on device 2 → device 1 sees "Food ready" on the table
-  await click("Bump", p2);
+  const bumped = await p2.evaluate((tableName) => {
+    const card = [...document.querySelectorAll("article")].find((a) => a.innerText.toLowerCase().includes(("Table " + tableName).toLowerCase()) && a.innerText.includes("Classic Burger"));
+    const btn = card && [...card.querySelectorAll("button")].find((b) => b.innerText.includes("Bump"));
+    btn?.click();
+    return !!btn;
+  }, tableName);
+  if (!bumped) throw new Error("Could not find the burger ticket's Bump button");
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await click("Tables");
-  await expectText("Food ready", 25000);
+  // Look at the T3 card itself (the legend also says "Food ready").
+  const t0 = Date.now();
+  let t3 = "";
+  while (Date.now() - t0 < 30000) {
+    t3 = await page.evaluate((tableName) => [...document.querySelectorAll("button")].find((b) => b.innerText.trim().split(/\s/)[0] === tableName)?.innerText ?? "", tableName);
+    if (/food ready/i.test(t3)) break;
+    await sleep(500);
+  }
+  if (!/food ready/i.test(t3)) throw new Error("Table " + tableName + " never showed Food ready: " + t3.replace(/\s+/g, " "));
   await shot("12-table-food-ready");
-  log("Kitchen bump on device 2 synced to device 1 (table shows Food ready)");
+  log(`Kitchen bump on device 2 synced to device 1 (table ${tableName} shows Food ready)`);
 
   // 10. Orders & reports screens, mobile register
   await click("Orders");
