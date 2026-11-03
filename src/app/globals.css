@@ -1,26 +1,340 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #f8f9fb;
+  --surface-3: #eef0f3;
+  --line: #e3e6eb;
+  --line-strong: #cfd4dc;
+  --ink: #111827;
+  --ink-2: #374151;
+  --muted: #6b7280;
+  --brand: #0f766e;
+  --brand-hover: #115e59;
+  --brand-soft: #e6f6f4;
+  --brand-ink: #0b5952;
+  --ring: rgba(15, 118, 110, 0.35);
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 20px 40px -12px rgba(16, 24, 40, 0.25);
+}
+
+.dark {
+  --bg: #0b0f14;
+  --surface: #131922;
+  --surface-2: #18202b;
+  --surface-3: #1f2834;
+  --line: #263140;
+  --line-strong: #344256;
+  --ink: #f1f5f9;
+  --ink-2: #cbd5e1;
+  --muted: #8b98a9;
+  --brand: #14b8a6;
+  --brand-hover: #2dd4bf;
+  --brand-soft: rgba(20, 184, 166, 0.14);
+  --brand-ink: #5eead4;
+  --ring: rgba(45, 212, 191, 0.4);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.6);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-lg);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+button,
+[role="button"] {
+  touch-action: manipulation;
+  user-select: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes flash {
+  0%,
+  100% {
+    background: transparent;
+  }
+  30% {
+    background: var(--brand-soft);
+  }
+}
+@utility anim-pop {
+  animation: pop-in 0.18s ease-out;
+}
+@utility anim-sheet {
+  animation: sheet-up 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@utility anim-fade {
+  animation: fade-in 0.15s ease-out;
+}
+@utility anim-flash {
+  animation: flash 0.8s ease-out;
+}
+
+/* ------------------------------------------------------------------ */
+/* Receipt template — shared by on-screen preview and thermal print.  */
+/* ------------------------------------------------------------------ */
+
+.rcpt {
+  --rw: 80mm;
+  width: 100%;
+  max-width: var(--rw);
+  margin: 0 auto;
+  padding: 18px 16px 22px;
+  background: #fff;
+  color: #000;
+  font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.rcpt.w58 {
+  --rw: 58mm;
+  font-size: 11px;
+  padding: 12px 8px 16px;
+}
+.rcpt * {
+  box-sizing: border-box;
+}
+.rcpt .c {
+  text-align: center;
+}
+.rcpt .r {
+  text-align: right;
+}
+.rcpt .brand {
+  font-size: 1.55em;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.rcpt .sub {
+  color: #333;
+  font-size: 0.92em;
+}
+.rcpt .doc {
+  margin: 10px 0 2px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.95em;
+}
+.rcpt .stamp {
+  display: inline-block;
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 1px 10px;
+  margin: 6px 0 2px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  font-size: 1em;
+}
+.rcpt hr {
+  border: 0;
+  border-top: 1px dashed #000;
+  margin: 9px 0;
+}
+.rcpt hr.solid {
+  border-top: 2px solid #000;
+}
+.rcpt .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.rcpt .row > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rcpt .row > :last-child {
+  white-space: nowrap;
+}
+.rcpt .meta .row {
+  font-size: 0.95em;
+}
+.rcpt .meta .row > :first-child {
+  color: #333;
+}
+.rcpt .item {
+  margin: 5px 0;
+}
+.rcpt .item .name {
+  font-weight: 600;
+}
+.rcpt .item .qty {
+  display: inline-block;
+  min-width: 2.2em;
+  font-weight: 700;
+}
+.rcpt .item .mod,
+.rcpt .item .note {
+  padding-left: 2.2em;
+  font-size: 0.9em;
+  color: #222;
+}
+.rcpt .item .note {
+  font-style: italic;
+}
+.rcpt .item.void .name,
+.rcpt .item.void .row > :last-child {
+  text-decoration: line-through;
+}
+.rcpt .tag {
+  font-size: 0.75em;
+  font-weight: 800;
+  border: 1px solid #000;
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 4px;
+  letter-spacing: 0.05em;
+  text-decoration: none !important;
+  display: inline-block;
+}
+.rcpt .totals .row {
+  margin: 2px 0;
+}
+.rcpt .grand {
+  font-size: 1.45em;
+  font-weight: 800;
+  margin: 4px 0 2px;
+}
+.rcpt .due {
+  font-size: 1.2em;
+  font-weight: 800;
+}
+.rcpt .tipbox .row {
+  margin: 3px 0;
+}
+.rcpt .writein {
+  border-bottom: 1px solid #000;
+  min-width: 40%;
+  height: 1.3em;
+}
+.rcpt .foot {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 0.92em;
+  white-space: pre-line;
+}
+.rcpt .num {
+  font-family: ui-monospace, "Geist Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+.rcpt .barcode {
+  margin: 10px auto 0;
+  height: 34px;
+  width: 85%;
+}
+/* kitchen ticket variant */
+.rcpt.kitchen {
+  font-size: 15px;
+}
+.rcpt.kitchen .item .name {
+  font-size: 1.1em;
+  font-weight: 800;
+}
+.rcpt.kitchen .big {
+  font-size: 2em;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+/* Print: only the print root is visible. */
+#print-root {
+  display: none;
+}
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    height: auto !important;
+  }
+  body.printing > *:not(#print-root) {
+    display: none !important;
+  }
+  body.printing #print-root {
+    display: block !important;
+  }
+  .rcpt {
+    padding-top: 4px;
+    max-width: none;
+    width: var(--rw);
+    margin: 0;
+  }
+  .rcpt.a4 {
+    width: auto;
+  }
 }
