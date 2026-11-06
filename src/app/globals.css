@@ -3,79 +3,90 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * "Espresso Bar" — a custom theme grown from the Golden Hour palette (theme-factory),
- * built for an evening café service. Layout concept: a warm, dimly lit room — ambient glow
- * behind glass panels, with the gold "crema" accent reserved for money and the next action.
- *
- * Color: espresso (bg) · roast (surfaces) · crema (accent, money & primary actions)
- *        · terracotta (secondary warmth) · steamed milk (ink).
- * Type:  Unbounded (display: totals, order numbers, clock) · Figtree (body) · JetBrains Mono (codes).
+ * "Guest Check" — the waiter's guest-check pad, made into software.
+ * Ground: pale check-green stock. Work panels: white carbon copy. Printed green ink carries
+ * rules, column heads, the nav rail and primary actions. Red serial numerals are reserved for
+ * order numbers. Ballpoint blue is reserved for what staff wrote (modifiers, notes, names).
+ * One family (Archivo): condensed caps for column heads and serials, normal width for UI,
+ * tabular figures for money. Flat and hairline-ruled: no texture, glass, glow or gradients.
  */
 :root {
-  /* Latte — light */
-  --bg: #efe6dc;
-  --surface: #fffaf4;
-  --surface-2: #f8f0e7;
-  --surface-3: #efe3d6;
-  --glass: rgba(255, 250, 244, 0.72);
-  --line: #e2d3c3;
-  --line-strong: #cdb9a5;
-  --ink: #241810;
-  --ink-2: #4b3a2c;
-  --muted: #7d6a5a;
-  --brand: #e3a020;
-  --brand-hover: #f0b03a;
-  --brand-soft: rgba(227, 160, 32, 0.16);
-  --brand-ink: #8a5800;
-  --on-brand: #2a1808;
-  --terracotta: #c4644f;
-  --glow-1: rgba(227, 160, 32, 0.28);
-  --glow-2: rgba(196, 100, 79, 0.2);
-  --ring: rgba(227, 160, 32, 0.45);
-  --shadow: 0 1px 2px rgba(60, 35, 15, 0.06), 0 2px 6px rgba(60, 35, 15, 0.06);
-  --shadow-lg: 0 24px 48px -16px rgba(60, 35, 15, 0.35);
-  --shadow-glow: 0 6px 20px -6px rgba(227, 160, 32, 0.55);
-  /* physical materials */
-  --paper: #fffdf7;
-  --paper-ink: #2b1d12;
-  --rail-hi: #d9d4cd;
-  --rail-lo: #9a948c;
-  --floor: #e7dbcd;
-  --floor-line: rgba(90, 60, 30, 0.08);
-  --chair: #cdb9a5;
+  --bg: #e3ebdf;
+  --surface: #ffffff;
+  --surface-2: #f4f7f2;
+  --surface-3: #e8eee5;
+  --line: #d3ded0;
+  --line-strong: #a9bea5;
+  --ink: #16201a;
+  --ink-2: #344439;
+  --muted: #5a6b60;
+  --brand: #24563b;
+  --brand-hover: #1b4630;
+  --brand-soft: #dceadf;
+  --brand-ink: #1f5034;
+  --on-brand: #ffffff;
+  --serial: #c4302a;
+  --pen: #2640a6;
+  --pen-soft: #e6eaf8;
+  --rail: #1e4a32;
+  --rail-ink: #b9d3c0;
+  --rail-on: #f2f7f1;
+  --ok: #1d7347;
+  --ok-soft: #dcefe2;
+  --warn: #9a5b00;
+  --warn-soft: #fbefd6;
+  --warn-line: #e8c37a;
+  --bad: #b3261e;
+  --bad-soft: #fae5e2;
+  --info: #1f5f99;
+  --info-soft: #e1edf8;
+  --ring: rgba(36, 86, 59, 0.35);
+  --shadow: 0 1px 2px rgba(22, 32, 26, 0.06), 0 1px 1px rgba(22, 32, 26, 0.04);
+  --shadow-lg: 0 18px 40px -14px rgba(22, 32, 26, 0.28), 0 2px 6px rgba(22, 32, 26, 0.06);
+  /* floor plan */
+  --floor: #edf2ea;
+  --floor-line: rgba(30, 74, 50, 0.07);
+  --chair: #b8cbb4;
+  color-scheme: light;
 }
 
 .dark {
-  /* Espresso — dark (default) */
-  --bg: #15100c;
-  --surface: #211912;
-  --surface-2: #281e16;
-  --surface-3: #33271d;
-  --glass: rgba(33, 25, 18, 0.66);
-  --line: #3a2d22;
-  --line-strong: #54432f;
-  --ink: #f7eee4;
-  --ink-2: #dccbb9;
-  --muted: #a99482;
-  --brand: #f2b33d;
-  --brand-hover: #ffc75e;
-  --brand-soft: rgba(242, 179, 61, 0.14);
-  --brand-ink: #f7c76a;
-  --on-brand: #2a1808;
-  --terracotta: #df7a62;
-  --glow-1: rgba(242, 179, 61, 0.16);
-  --glow-2: rgba(223, 122, 98, 0.13);
-  --ring: rgba(242, 179, 61, 0.45);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 30px 60px -18px rgba(0, 0, 0, 0.75);
-  --shadow-glow: 0 8px 26px -8px rgba(242, 179, 61, 0.6);
-  --paper: #f6eddd;
-  --paper-ink: #2b1d12;
-  --rail-hi: #8f8a83;
-  --rail-lo: #4e4a45;
-  --floor: #1b140f;
-  --floor-line: rgba(255, 220, 180, 0.045);
-  --chair: #4a3a2c;
+  --bg: #0e1411;
+  --surface: #161e19;
+  --surface-2: #1b241e;
+  --surface-3: #222d26;
+  --line: #2a372f;
+  --line-strong: #3d5044;
+  --ink: #e6eee7;
+  --ink-2: #c1cec4;
+  --muted: #8b9e91;
+  --brand: #6bbf8d;
+  --brand-hover: #84cfa3;
+  --brand-soft: #1d3426;
+  --brand-ink: #8fd4ab;
+  --on-brand: #07130c;
+  --serial: #ff7b6f;
+  --pen: #a3b4ff;
+  --pen-soft: #1f2540;
+  --rail: #0a100d;
+  --rail-ink: #8ea596;
+  --rail-on: #e6eee7;
+  --ok: #67c993;
+  --ok-soft: #173123;
+  --warn: #eab452;
+  --warn-soft: #33270f;
+  --warn-line: #6b5421;
+  --bad: #ff8076;
+  --bad-soft: #3a1a18;
+  --info: #86b9ea;
+  --info-soft: #172a3d;
+  --ring: rgba(107, 191, 141, 0.4);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 22px 48px -16px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --floor: #121a15;
+  --floor-line: rgba(200, 230, 210, 0.05);
+  --chair: #33443a;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -83,7 +94,6 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
-  --color-glass: var(--glass);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-ink: var(--ink);
@@ -94,67 +104,31 @@
   --color-brand-soft: var(--brand-soft);
   --color-brand-ink: var(--brand-ink);
   --color-on-brand: var(--on-brand);
-  --color-terracotta: var(--terracotta);
+  --color-serial: var(--serial);
+  --color-pen: var(--pen);
+  --color-pen-soft: var(--pen-soft);
+  --color-rail: var(--rail);
+  --color-rail-ink: var(--rail-ink);
+  --color-rail-on: var(--rail-on);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-line: var(--warn-line);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
   --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: var(--font-disp), var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-code), ui-monospace, Menlo, Consolas, monospace;
+  --font-mono: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
   --shadow-card: var(--shadow);
   --shadow-pop: var(--shadow-lg);
-  --shadow-glow: var(--shadow-glow);
-}
-
-/* Ambient room light: slow-drifting warm glows plus a fine grain, behind every screen. */
-.ambient {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-  background: var(--bg);
-}
-.ambient::before,
-.ambient::after {
-  content: "";
-  position: absolute;
-  width: 70vmax;
-  height: 70vmax;
-  border-radius: 50%;
-  filter: blur(60px);
-}
-.ambient::before {
-  background: radial-gradient(circle, var(--glow-1), transparent 65%);
-  top: -30vmax;
-  right: -20vmax;
-  animation: drift-a 28s ease-in-out infinite alternate;
-}
-.ambient::after {
-  background: radial-gradient(circle, var(--glow-2), transparent 65%);
-  bottom: -35vmax;
-  left: -25vmax;
-  animation: drift-b 34s ease-in-out infinite alternate;
-}
-.grain {
-  position: absolute;
-  inset: 0;
-  opacity: 0.05;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-}
-@keyframes drift-a {
-  to {
-    transform: translate(-12vmax, 10vmax) scale(1.1);
-  }
-}
-@keyframes drift-b {
-  to {
-    transform: translate(14vmax, -8vmax) scale(1.15);
-  }
-}
-
-/* Glass panels sit on the ambient light. */
-@utility glass {
-  background: var(--glass);
-  backdrop-filter: blur(18px) saturate(1.2);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  /* Guest checks are square-cut: tighten every corner in the system. */
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
+  --radius-3xl: 14px;
 }
 
 html,
@@ -166,13 +140,24 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01";
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+}
+
+::selection {
+  background: var(--pen-soft);
+  color: var(--ink);
 }
 
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
+}
+
+input,
+textarea {
+  caret-color: var(--pen);
 }
 
 button,
@@ -195,61 +180,44 @@ h2 {
   text-wrap: balance;
 }
 
-/* Wide display face for headings and money; tighter tracking keeps it from sprawling. */
+/* Money and big figures: same family, heavier, tabular. */
 @utility display {
-  font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
 }
 
-@keyframes tile-pop {
-  0% { transform: scale(1); }
-  35% { transform: scale(0.94); }
-  70% { transform: scale(1.03); }
-  100% { transform: scale(1); }
+/* Printed column heads on the check: condensed caps. */
+@utility cond {
+  font-stretch: 78%;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
-@keyframes ripple {
-  from { transform: scale(0); opacity: 0.55; }
-  to { transform: scale(2.6); opacity: 0; }
-}
-@keyframes bump {
-  0%, 100% { transform: scale(1); }
-  40% { transform: scale(1.25); }
-}
-@keyframes burst {
-  from { transform: scale(0.6); opacity: 0.9; }
-  to { transform: scale(2.4); opacity: 0; }
-}
-@keyframes draw {
-  to { stroke-dashoffset: 0; }
-}
-@keyframes rise {
-  from { opacity: 0; transform: translateY(14px); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes steam {
-  0% { transform: translateY(0) scaleX(1); opacity: 0; }
-  20% { opacity: 0.5; }
-  100% { transform: translateY(-60px) scaleX(1.6); opacity: 0; }
-}
-@utility anim-tile { animation: tile-pop 0.38s cubic-bezier(0.3, 0.7, 0.4, 1.4); }
-@utility anim-bump { animation: bump 0.35s ease-out; }
-@utility anim-rise { animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-  }
+/* The red numbering-machine serial: order numbers only. */
+@utility serial {
+  font-stretch: 82%;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--serial);
+}
+
+/* Ballpoint: anything a person wrote on this check. */
+@utility pen {
+  color: var(--pen);
+}
+
+/* The double rule printed above TOTAL on a guest check. */
+@utility rule-double {
+  border-top: 3px double var(--brand-ink);
 }
 
 @keyframes pop-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
+    transform: translateY(6px) scale(0.985);
   }
   to {
     opacity: 1;
@@ -277,12 +245,27 @@ h2 {
   100% {
     background: transparent;
   }
-  30% {
-    background: var(--brand-soft);
+  25% {
+    background: var(--pen-soft);
   }
 }
+@keyframes line-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes press {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
 @utility anim-pop {
-  animation: pop-in 0.18s ease-out;
+  animation: pop-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 @utility anim-sheet {
   animation: sheet-up 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
@@ -291,7 +274,23 @@ h2 {
   animation: fade-in 0.15s ease-out;
 }
 @utility anim-flash {
-  animation: flash 0.8s ease-out;
+  animation: flash 0.9s ease-out;
+}
+@utility anim-line {
+  animation: line-in 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@utility anim-press {
+  animation: press 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -328,7 +327,7 @@ h2 {
   text-align: right;
 }
 .rcpt .brand {
-  font-family: var(--font-disp), var(--font-body), sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 1.45em;
   font-weight: 800;
   letter-spacing: -0.01em;
@@ -444,7 +443,8 @@ h2 {
   white-space: pre-line;
 }
 .rcpt .num {
-  font-family: var(--font-code), ui-monospace, Menlo, Consolas, monospace;
+  font-family: var(--font-body), sans-serif;
+  font-stretch: 85%;
   letter-spacing: 0.04em;
 }
 .rcpt .barcode {
@@ -465,199 +465,6 @@ h2 {
   font-weight: 900;
   line-height: 1.1;
 }
-
-
-/* ------------------------------------------------------------------ */
-/* Café materials: thermal paper, the ticket rail, the floor plan.     */
-/* ------------------------------------------------------------------ */
-
-/* Kitchen dockets: real paper on a steel rail, in both themes. */
-.ticket-rail {
-  height: 12px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--rail-hi), var(--rail-lo));
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25), 0 6px 14px -6px rgba(0, 0, 0, 0.6);
-}
-.docket {
-  background: var(--paper);
-  color: var(--paper-ink);
-  border-radius: 3px 3px 0 0;
-  box-shadow: 0 18px 30px -18px rgba(0, 0, 0, 0.7), 0 2px 4px rgba(0, 0, 0, 0.15);
-  transform-origin: top center;
-  /* torn bottom edge */
-  --tooth: 9px;
-  padding-bottom: var(--tooth);
-  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / calc(var(--tooth) * 2) 100%;
-  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / calc(var(--tooth) * 2) 100%;
-}
-.docket-clip {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 46px;
-  height: 18px;
-  translate: -50% 0;
-  border-radius: 4px;
-  background: linear-gradient(180deg, var(--rail-hi), var(--rail-lo));
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
-  z-index: 2;
-}
-.docket-heat {
-  height: 6px;
-}
-.heat-ok { background: #1f9d6b; color: #fff; }
-.heat-warn { background: #e4a11b; color: #2a1808; }
-.heat-late { background: #d2452f; color: #fff; }
-.heat-done { background: #8b7b6b; color: #fff; }
-.docket-timer {
-  display: inline-block;
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-family: var(--font-code), ui-monospace, monospace;
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-.docket-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.7;
-}
-.perf {
-  position: relative;
-  height: 0;
-  margin: 6px 12px;
-  border-top: 2px dashed color-mix(in oklab, var(--paper-ink) 28%, transparent);
-}
-.docket-line {
-  transition: background 0.15s;
-}
-.docket-line:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--paper-ink) 7%, transparent);
-}
-.docket-line.is-done .docket-item {
-  text-decoration: line-through;
-  text-decoration-thickness: 2px;
-  opacity: 0.45;
-}
-.docket-check {
-  margin-top: 2px;
-  display: flex;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  border: 2px solid color-mix(in oklab, var(--paper-ink) 45%, transparent);
-}
-.docket-check.is-on {
-  background: #1f9d6b;
-  border-color: #1f9d6b;
-  color: #fff;
-}
-.docket-check.is-void {
-  border-color: #d2452f;
-  color: #d2452f;
-}
-.docket-void {
-  margin-left: 8px;
-  border: 2px solid #d2452f;
-  color: #d2452f;
-  border-radius: 4px;
-  padding: 0 5px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  vertical-align: 2px;
-}
-/* handwritten-highlighter look for allergy / prep notes */
-.docket-note {
-  display: inline;
-  margin-top: 2px;
-  padding: 1px 4px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  background: linear-gradient(100deg, transparent 0 2%, #ffe169 3% 96%, transparent 97%);
-  color: #2b1d12;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
-.docket-bump {
-  display: flex;
-  width: 100%;
-  height: 52px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-radius: 10px;
-  background: var(--paper-ink);
-  color: var(--paper);
-  font-weight: 700;
-  font-size: 1.02rem;
-  transition: transform 0.12s, background 0.15s;
-}
-.docket-bump:active {
-  transform: scale(0.98);
-}
-.docket-bump.is-cancel {
-  background: #d2452f;
-  color: #fff;
-}
-.docket-bump.is-ghost {
-  background: transparent;
-  color: var(--paper-ink);
-  border: 2px solid color-mix(in oklab, var(--paper-ink) 30%, transparent);
-}
-.docket-stamp {
-  position: absolute;
-  top: 44%;
-  left: 50%;
-  translate: -50% -50%;
-  rotate: -14deg;
-  border: 4px double #d2452f;
-  border-radius: 8px;
-  padding: 4px 14px;
-  color: #d2452f;
-  font-family: var(--font-disp), sans-serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.85;
-  pointer-events: none;
-  mix-blend-mode: multiply;
-}
-
-/* On-screen receipt previews get a torn thermal-paper edge (print output stays clean). */
-.torn {
-  --tooth: 7px;
-  padding-bottom: var(--tooth);
-  background: #fff;
-  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / calc(var(--tooth) * 2) 100%;
-  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / calc(var(--tooth) * 2) 100%;
-}
-
-/* Order docket stub in the register: notched perforation between header and lines. */
-.stub-perf {
-  position: relative;
-  height: 0;
-  border-top: 2px dashed var(--line-strong);
-}
-.stub-perf::before,
-.stub-perf::after {
-  content: "";
-  position: absolute;
-  top: -11px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--bg);
-  border: 1px solid var(--line);
-}
-.stub-perf::before { left: -11px; }
-.stub-perf::after { right: -11px; }
 
 /* Floor plan: tables drawn as tables, with their chairs. */
 .floor {

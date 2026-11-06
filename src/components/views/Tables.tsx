@@ -1,13 +1,13 @@
 "use client";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowRightLeft, CheckCheck, CreditCard, FileText, LayoutGrid, Merge, Minus, Pencil, Plus, Users } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, CheckCheck, CreditCard, FileText, LayoutGrid, Merge, Minus, Pencil, Plus } from "lucide-react";
 import { useSession } from "@/client/session";
 import { useNow, useOpenOrders, usePaymentsByOrders, useTables } from "@/client/hooks";
 import { now, orderPayments, updateOrder } from "@/client/repo";
 import { computeTotals, summarizePayments } from "@/lib/calc";
 import { timeAgo } from "@/lib/format";
 import type { DiningTable, Order } from "@/lib/types";
-import { Badge, Button, EmptyState, Modal, Spinner, cx, useConfirm, useToast } from "../ui";
+import { Badge, Button, ColHead, EmptyState, Modal, Segmented, Spinner, cx, useConfirm, useToast } from "../ui";
 import { useMoney, useOrderActions } from "../orderActions";
 
 export function TablesView() {
@@ -41,27 +41,29 @@ export function TablesView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center gap-3 border-b border-line p-3 glass sm:p-4">
+      <div className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-3 py-3 sm:px-5">
         <div className="mr-auto">
-          <h1 className="display text-xl font-semibold">Tables</h1>
-          <p className="text-sm text-muted">
+          <h1 className="text-[21px] font-bold leading-tight tracking-[-0.01em]">Tables</h1>
+          <p className="text-sm text-muted tabular">
             {occupiedCount} of {tables.length} occupied
           </p>
         </div>
-        <div className="flex gap-2 overflow-x-auto">
-          {["all", ...areas].map((a) => (
-            <button key={a} onClick={() => setArea(a)} className={cx("h-9 shrink-0 rounded-full border px-3.5 text-sm font-semibold", area === a ? "border-transparent bg-ink text-surface" : "border-line-strong text-ink-2")}>
-              {a === "all" ? "All areas" : a}
-            </button>
-          ))}
+        <div className="max-w-full overflow-x-auto">
+          <Segmented
+            size="sm"
+            className="w-max min-w-full"
+            value={area}
+            onChange={setArea}
+            options={["all", ...areas].map((a) => ({ value: a, label: a === "all" ? "All areas" : a }))}
+          />
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
-        <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-muted">
-          <Legend cls="border-line-strong bg-surface" label="Free" />
-          <Legend cls="border-sky-400 bg-sky-500/20" label="Seated" />
-          <Legend cls="border-emerald-400 bg-emerald-500/25" label="Food ready to run" />
-          <Legend cls="border-amber-400 bg-amber-500/25" label="Check printed" />
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] font-semibold text-ink-2">
+          <Legend cls={TOP.free} label="Free" />
+          <Legend cls={TOP.seated} label="Seated" />
+          <Legend cls={TOP.ready} label="Food ready to run" />
+          <Legend cls={TOP.billed} label="Check printed" />
           <span className="flex items-center gap-1.5">
             <span className="chair !static" style={{ background: "var(--brand)" }} /> Occupied seat
           </span>
@@ -79,10 +81,10 @@ export function TablesView() {
                 const free = inArea.filter((t) => !byTable.has(t.id)).length;
                 const patio = /patio|terrace|garden|outdoor|deck/i.test(a);
                 return (
-                  <section key={a} className={cx("floor overflow-hidden rounded-[1.75rem] border border-line", patio && "floor-patio")}>
-                    <header className="flex items-baseline justify-between gap-3 px-5 pt-4">
-                      <h2 className="display text-base font-semibold">{a}</h2>
-                      <p className="text-sm text-muted">
+                  <section key={a} className={cx("floor overflow-hidden rounded-xl border border-line", patio && "floor-patio")}>
+                    <header className="flex items-baseline justify-between gap-3 px-4 pt-3.5">
+                      <h2 className="text-base font-bold tracking-[-0.01em]">{a}</h2>
+                      <p className="text-sm text-muted tabular">
                         {free} of {inArea.length} free
                       </p>
                     </header>
@@ -100,22 +102,30 @@ export function TablesView() {
                           <button
                             key={t.id}
                             onClick={() => (o ? setSelected(t) : setNewFor(t))}
-                            className="group flex flex-col items-center gap-1.5 rounded-2xl py-1 transition active:scale-[0.97]"
+                            className="group flex flex-col items-center gap-1.5 rounded-xl py-1 outline-none transition-transform duration-150 focus-visible:ring-3 focus-visible:ring-[var(--ring)] active:scale-[0.97]"
                           >
                             <TableShape seats={t.seats} occupied={guests} state={state}>
-                              <span className="display block text-xl font-semibold leading-none">{t.name}</span>
-                              <span className="mt-1 block text-[11px] font-semibold opacity-75">
+                              <span className="block text-xl font-bold leading-none tabular">{t.name}</span>
+                              <span className="mt-1 block text-[11px] font-semibold tabular text-ink-2">
                                 {o ? `${guests}/${t.seats}` : `${t.seats} seats`}
                               </span>
                             </TableShape>
                             {o ? (
                               <span className="flex flex-col items-center leading-tight">
                                 <span className="text-[13px] font-semibold text-ink-2">
-                                  #{o.number} · {timeAgo(o.createdAt, nowTs)}
+                                  <span className="serial">#{o.number}</span> · <span className="tabular">{timeAgo(o.createdAt, nowTs)}</span>
                                 </span>
-                                <span className="display text-[15px] font-semibold">{money(due > 0 ? due : total)}</span>
-                                {ready && <Badge tone="green" className="mt-1">Food ready</Badge>}
-                                {billed && !ready && <Badge tone="amber" className="mt-1">Check printed</Badge>}
+                                <span className="display text-[15px]">{money(due > 0 ? due : total)}</span>
+                                {ready && (
+                                  <Badge tone="green" className="mt-1">
+                                    <CheckCheck className="size-3" /> Food ready
+                                  </Badge>
+                                )}
+                                {billed && !ready && (
+                                  <Badge tone="amber" className="mt-1">
+                                    <FileText className="size-3" /> Check printed
+                                  </Badge>
+                                )}
                                 {orders.length > 1 && (
                                   <Badge tone="red" className="mt-1">
                                     <AlertTriangle className="size-3" /> {orders.length} checks
@@ -159,11 +169,12 @@ export function TablesView() {
   );
 }
 
+/** Table-top fill by state: free = white, seated = soft green, food ready = ok, check printed = warn (go collect). */
 const TOP: Record<string, string> = {
-  free: "border-line-strong bg-surface text-ink",
-  seated: "border-sky-400 bg-sky-500/20 text-ink",
-  ready: "border-emerald-400 bg-emerald-500/25 text-ink",
-  billed: "border-amber-400 bg-amber-500/25 text-ink",
+  free: "border-brand-ink/35 bg-surface text-ink",
+  seated: "border-brand-ink/60 bg-brand-soft text-brand-ink",
+  ready: "border-ok bg-ok-soft text-ok",
+  billed: "border-warn-line bg-warn-soft text-warn",
 };
 
 /**
@@ -196,12 +207,12 @@ function TableShape({ seats, occupied, state, children }: { seats: number; occup
       })}
       <span
         className={cx(
-          "absolute flex flex-col items-center justify-center border-2 text-center shadow-card transition group-hover:shadow-pop",
+          "absolute flex flex-col items-center justify-center border text-center transition-[border-color,box-shadow] duration-150 group-hover:border-brand-ink group-hover:shadow-card",
+          state === "ready" && "border-2",
           twoTop ? "inset-[30px] rounded-xl" : "inset-[22px] rounded-full",
           TOP[state],
         )}
       >
-        {state === "ready" && <span className="absolute inset-[-6px] animate-ping rounded-[inherit] border-2 border-emerald-400/60" aria-hidden />}
         {children}
       </span>
     </span>
@@ -211,7 +222,7 @@ function TableShape({ seats, occupied, state, children }: { seats: number; occup
 function Legend({ cls, label }: { cls: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span className={cx("size-3.5 rounded-full border-2", cls)} />
+      <span className={cx("size-3.5 rounded-full border", cls)} />
       {label}
     </span>
   );
@@ -232,19 +243,19 @@ function SeatModal({ table, onClose, onSeat }: { table: DiningTable | null; onCl
         </Button>
       }
     >
-      <p className="mb-3 text-center text-sm font-semibold text-muted">How many guests?</p>
+      <p className="mb-3 text-center text-[13px] font-semibold text-ink-2">How many guests?</p>
       <div className="flex items-center justify-center gap-5">
-        <button className="flex size-14 items-center justify-center rounded-2xl bg-surface-3" onClick={() => setG((x) => Math.max(1, x - 1))} aria-label="Fewer">
+        <button className="flex size-14 items-center justify-center rounded-xl border border-line-strong bg-surface transition-colors duration-150 hover:bg-surface-2 active:bg-surface-3" onClick={() => setG((x) => Math.max(1, x - 1))} aria-label="Fewer">
           <Minus className="size-6" />
         </button>
-        <span className="w-14 text-center text-5xl font-bold tabular">{g}</span>
-        <button className="flex size-14 items-center justify-center rounded-2xl bg-surface-3" onClick={() => setG((x) => Math.min(50, x + 1))} aria-label="More">
+        <span className="display w-14 text-center text-5xl">{g}</span>
+        <button className="flex size-14 items-center justify-center rounded-xl border border-line-strong bg-surface transition-colors duration-150 hover:bg-surface-2 active:bg-surface-3" onClick={() => setG((x) => Math.min(50, x + 1))} aria-label="More">
           <Plus className="size-6" />
         </button>
       </div>
       <div className="mt-5 grid grid-cols-4 gap-2">
         {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
-          <button key={n} onClick={() => setG(n)} className={cx("h-11 rounded-xl border font-semibold", g === n ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong")}>
+          <button key={n} onClick={() => setG(n)} className={cx("h-11 rounded-lg border font-semibold tabular transition-colors duration-150", g === n ? "border-brand bg-brand text-on-brand" : "border-line-strong bg-surface hover:bg-surface-2")}>
             {n}
           </button>
         ))}
@@ -311,22 +322,31 @@ function TableOrdersModal({
             const t = computeTotals(o);
             const ready = o.items.filter((i) => i.status === "ready" && !i.voided).length;
             return (
-              <div key={o.id} className="rounded-2xl border border-line p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-bold">#{o.number}</p>
-                    <p className="text-sm text-muted">
-                      {o.guests ?? 1} guests · {t.itemCount} items · {o.createdBy}
-                    </p>
-                  </div>
-                  <p className="text-xl font-bold tabular">{money(t.total)}</p>
+              <div key={o.id} className="overflow-hidden rounded-xl border border-line bg-surface">
+                <div className="flex items-start justify-between gap-3 px-4 pt-3.5">
+                  <p className="serial text-xl leading-none">#{o.number}</p>
+                  <p className="display text-xl leading-none">{money(t.total)}</p>
                 </div>
+                <dl className="mx-4 mt-3 grid grid-cols-3 divide-x divide-line rounded-lg border border-line-strong">
+                  <div className="px-2.5 py-1.5">
+                    <dt><ColHead>Guests</ColHead></dt>
+                    <dd className="text-sm font-semibold tabular">{o.guests ?? 1}</dd>
+                  </div>
+                  <div className="px-2.5 py-1.5">
+                    <dt><ColHead>Items</ColHead></dt>
+                    <dd className="text-sm font-semibold tabular">{t.itemCount}</dd>
+                  </div>
+                  <div className="min-w-0 px-2.5 py-1.5">
+                    <dt><ColHead>Server</ColHead></dt>
+                    <dd className="truncate text-sm font-semibold">{o.createdBy}</dd>
+                  </div>
+                </dl>
                 {ready > 0 && (
-                  <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                  <p className="mx-4 mt-2.5 flex items-center gap-1.5 rounded-md bg-ok-soft px-2 py-1 text-sm font-semibold text-ok">
                     <CheckCheck className="size-4" /> {ready} item{ready > 1 ? "s" : ""} ready to serve
                   </p>
                 )}
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line bg-surface-2 p-3">
                   <Button variant="outline" icon={<Pencil className="size-4" />} onClick={() => onOpen(o.id, "register")}>
                     Open
                   </Button>
@@ -365,9 +385,9 @@ function TableOrdersModal({
                   setMoving(null);
                   onClose();
                 }}
-                className="flex h-20 flex-col items-center justify-center rounded-2xl border-2 border-line hover:border-brand"
+                className="flex h-20 flex-col items-center justify-center gap-1 rounded-xl border border-brand-ink/35 bg-surface transition-colors duration-150 hover:border-brand hover:bg-brand-soft"
               >
-                <span className="text-lg font-bold">{t.name}</span>
+                <span className="rounded-md border border-line-strong px-1.5 text-lg font-semibold tabular">{t.name}</span>
                 <span className="text-xs text-muted">
                   {t.seats} seats · {t.area}
                 </span>

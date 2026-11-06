@@ -169,7 +169,7 @@ function ApprovalModal({ request, onDone }: { request: { action: string } | null
       size="sm"
       title={
         <span className="flex items-center gap-2">
-          <ShieldCheck className="size-5 text-amber-500" /> Manager approval
+          <ShieldCheck className="size-5 text-warn" /> Manager approval
         </span>
       }
       subtitle={request?.action}
@@ -262,21 +262,25 @@ export function PinPad({
 
   return (
     <div className="mx-auto w-full max-w-[300px]">
-      <div className={cx("mb-2 flex h-12 items-center justify-center gap-3", shake && "animate-[shake_0.35s]")} style={shake ? { animation: "shake .35s" } : undefined}>
-        {Array.from({ length: Math.max(length, pin.length) }).map((_, i) => (
-          <span key={i} className={cx("size-4 rounded-full border-2 transition", i < pin.length ? "border-brand bg-brand" : "border-line-strong")} />
-        ))}
+      <div className={cx("mb-2 flex items-center justify-center", shake && "animate-[shake_0.35s]")} style={shake ? { animation: "shake .35s" } : undefined}>
+        <div className="flex divide-x divide-line-strong overflow-hidden rounded-lg border border-line-strong bg-surface">
+          {Array.from({ length: Math.max(length, pin.length) }).map((_, i) => (
+            <span key={i} className={cx("flex h-12 w-12 items-center justify-center transition-colors duration-150", i === pin.length && "bg-brand-soft")}>
+              <span className={cx("size-3 rounded-full transition-transform duration-150", i < pin.length ? "scale-100 bg-ink" : "scale-0 bg-ink")} />
+            </span>
+          ))}
+        </div>
       </div>
-      <p className="mb-3 h-5 text-center text-sm font-medium text-rose-600">{error}</p>
-      <div className="grid grid-cols-3 gap-2.5">
+      <p className="mb-3 h-5 text-center text-sm font-medium text-bad" role="alert">{error}</p>
+      <div className="grid grid-cols-3 gap-2">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"].map((k) => (
           <button
             key={k}
             type="button"
             onClick={() => press(k)}
             className={cx(
-              "flex h-16 items-center justify-center rounded-2xl text-2xl font-semibold transition active:scale-95",
-              k === "clear" || k === "back" ? "text-base text-muted hover:bg-surface-3" : "bg-surface-3 text-ink hover:bg-line",
+              "flex h-16 items-center justify-center rounded-lg text-2xl font-semibold tabular-nums transition duration-150 active:scale-95",
+              k === "clear" || k === "back" ? "text-base text-ink-2 hover:bg-surface-3" : "border border-line bg-surface text-ink hover:border-line-strong hover:bg-surface-2 active:bg-surface-3",
             )}
           >
             {k === "back" ? <Delete className="size-6" /> : k === "clear" ? "Clear" : k}

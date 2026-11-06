@@ -37,6 +37,7 @@ import {
   Badge,
   Button,
   Card,
+  ColHead,
   EmptyState,
   Field,
   IconButton,
@@ -123,8 +124,8 @@ export function SettingsView() {
   return (
     <div className="flex h-full flex-col md:flex-row">
       {/* Navigation */}
-      <nav aria-label="Settings sections" className="glass shrink-0 border-b border-line md:w-60 md:overflow-y-auto md:border-b-0 md:border-r">
-        <h1 className="display hidden px-5 pb-2 pt-5 text-xl font-semibold text-ink md:block">Settings</h1>
+      <nav aria-label="Settings sections" className="shrink-0 border-b border-line bg-surface md:w-60 md:overflow-y-auto md:border-b-0 md:border-r">
+        <h1 className="hidden px-5 pb-3 pt-5 text-xl font-bold tracking-[-0.01em] text-ink md:block">Settings</h1>
         <div className="flex gap-2 overflow-x-auto px-3 py-2.5 md:flex-col md:gap-1 md:overflow-visible md:px-3 md:py-2">
           {sections.map((s) => (
             <button
@@ -133,15 +134,15 @@ export function SettingsView() {
               aria-current={current === s.id ? "page" : undefined}
               onClick={() => setSection(s.id)}
               className={cx(
-                "flex h-11 shrink-0 items-center gap-2.5 whitespace-nowrap rounded-xl px-3.5 text-[15px] font-semibold transition md:w-full",
-                current === s.id ? "bg-brand-soft text-brand-ink" : "text-ink-2 hover:bg-surface-3",
+                "flex h-11 shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 text-[15px] font-semibold transition-colors duration-150 md:w-full",
+                current === s.id ? "bg-brand-soft text-brand-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
                 "max-md:border max-md:border-line-strong",
                 current === s.id && "max-md:border-brand",
               )}
             >
               <span className="hidden md:inline">{s.icon}</span>
-              {s.label}
-              {s.usesDraft && dirty && <span className="size-2 rounded-full bg-amber-500" aria-label="unsaved changes" />}
+              <span className="md:flex-1 md:text-left">{s.label}</span>
+              {s.usesDraft && dirty && <span className="size-2 shrink-0 rounded-full bg-warn" aria-label="unsaved changes" />}
             </button>
           ))}
         </div>
@@ -163,8 +164,8 @@ export function SettingsView() {
 
         {(dirty || (usesDraft && saving)) && (
           <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-line bg-surface px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-5">
-            <span className="flex min-w-0 flex-1 items-center gap-2 text-[15px] font-semibold text-amber-700 dark:text-amber-300">
-              <span className="size-2.5 shrink-0 rounded-full bg-amber-500" />
+            <span className="flex min-w-0 flex-1 items-center gap-2 text-[15px] font-semibold text-warn">
+              <span className="size-2.5 shrink-0 rounded-full bg-warn" />
               Unsaved changes
             </span>
             <Button variant="ghost" icon={<Undo2 className="size-4" />} onClick={() => setDraft(null)} disabled={saving}>
@@ -212,9 +213,9 @@ function validateSettings(s: Settings): Errors {
 function Panel({ title, description, children, action }: { title: ReactNode; description?: ReactNode; children: ReactNode; action?: ReactNode }) {
   return (
     <Card className="p-4 sm:p-5">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3.5">
         <div className="min-w-0">
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
+          <h2 className="text-[17px] font-bold tracking-[-0.01em] text-ink">{title}</h2>
           {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
         </div>
         {action}
@@ -316,7 +317,7 @@ function BusinessSection({ value, patch, errors }: DraftProps) {
         <Field label="Tax / VAT number">
           <Input value={value.taxId} onChange={(e) => patch({ taxId: e.target.value })} placeholder="Optional" />
         </Field>
-        <Field label="Currency" error={errors.currency} hint={customCurrency ? <button type="button" className="font-semibold text-brand" onClick={() => setCustomCurrency(false)}>Choose from list</button> : <button type="button" className="font-semibold text-brand" onClick={() => setCustomCurrency(true)}>Enter another code</button>}>
+        <Field label="Currency" error={errors.currency} hint={customCurrency ? <button type="button" className="font-semibold text-brand-ink hover:underline" onClick={() => setCustomCurrency(false)}>Choose from list</button> : <button type="button" className="font-semibold text-brand-ink hover:underline" onClick={() => setCustomCurrency(true)}>Enter another code</button>}>
           {customCurrency ? (
             <Input value={value.currency} maxLength={3} onChange={(e) => patch({ currency: e.target.value.toUpperCase() })} placeholder="USD" className="uppercase" />
           ) : (
@@ -355,8 +356,8 @@ function TaxesSection({ value, patch, errors }: DraftProps) {
 
   return (
     <>
-      <div className="flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-3.5 text-sm text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200">
-        <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+      <div className="flex items-start gap-3 rounded-xl border border-line bg-info-soft p-3.5 text-sm text-ink-2">
+        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-info" />
         <p>Tax and service charge changes apply to <strong>new orders only</strong>. Existing orders keep the rates they were created with.</p>
       </div>
       <Panel title="Tax">
@@ -536,7 +537,7 @@ function ReceiptSection({ value, patch }: Omit<DraftProps, "errors">) {
             <Textarea value={value.receiptFooter} onChange={(e) => patch({ receiptFooter: e.target.value })} rows={2} />
           </Field>
           <div>
-            <p className="mb-1.5 text-sm font-semibold text-ink-2">Paper width</p>
+            <p className="mb-1.5 text-[13px] font-semibold text-ink-2">Paper width</p>
             <Segmented
               value={value.paperWidth}
               onChange={(v) => patch({ paperWidth: v })}
@@ -563,10 +564,10 @@ function ReceiptSection({ value, patch }: Omit<DraftProps, "errors">) {
         </div>
       </Panel>
       <div>
-        <p className="mb-2 px-1 text-sm font-semibold text-muted">Live preview</p>
-        <div className="rounded-[1.75rem] border border-line bg-surface-3/60 p-4 sm:p-6" aria-label="Receipt preview">
-          <div className="mx-auto" style={{ maxWidth: value.paperWidth === "58" ? "58mm" : "80mm", filter: "drop-shadow(0 18px 28px rgba(0,0,0,.35))" }}>
-            <div className="torn">
+        <p className="mb-2 px-1 text-[13px] font-semibold text-ink-2">Live preview</p>
+        <div className="rounded-xl border border-line bg-surface-3 p-4 sm:p-6" aria-label="Receipt preview">
+          <div className="mx-auto" style={{ maxWidth: value.paperWidth === "58" ? "58mm" : "80mm" }}>
+            <div className="border border-line-strong shadow-card">
               <SampleReceipt settings={previewSettings} by={staff.name} now={now} />
             </div>
           </div>
@@ -579,7 +580,7 @@ function ReceiptSection({ value, patch }: Omit<DraftProps, "errors">) {
 // ------------------------------------------------------------------ Staff
 
 const ROLES: Role[] = ["admin", "manager", "cashier", "kitchen"];
-const ROLE_TONE: Record<Role, Tone> = { admin: "violet", manager: "blue", cashier: "brand", kitchen: "amber" };
+const ROLE_TONE: Record<Role, Tone> = { admin: "brand", manager: "blue", cashier: "gray", kitchen: "amber" };
 
 function StaffSection() {
   const list = useStaffList();
@@ -622,33 +623,71 @@ function StaffSection() {
           <Spinner />
         </div>
       ) : list.length === 0 ? (
-        <EmptyState icon={<Users className="size-7" />} title="No staff yet" />
+        <EmptyState icon={<Users className="size-6" />} title="No staff yet" />
       ) : (
-        <ul className="-mx-1 divide-y divide-line">
-          {list.map((s) => (
-            <li key={s.id} className="flex items-center gap-3 px-1 py-2.5">
-              <span className={cx("flex size-11 shrink-0 items-center justify-center rounded-full text-base font-bold", s.active ? "bg-brand-soft text-brand-ink" : "bg-surface-3 text-muted")}>
-                {s.name.trim().charAt(0).toUpperCase() || "?"}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className={cx("truncate text-[15px] font-semibold", s.active ? "text-ink" : "text-muted line-through")}>
-                  {s.name}
-                  {s.id === me.id && <span className="ml-1.5 text-sm font-medium text-muted no-underline">(you)</span>}
-                </p>
-                <div className="mt-0.5 flex flex-wrap gap-1.5">
-                  <Badge tone={ROLE_TONE[s.role]}>{ROLE_LABEL[s.role]}</Badge>
-                  {!s.active && <Badge tone="gray">Inactive</Badge>}
-                </div>
-              </div>
-              <IconButton label={`Edit ${s.name}`} className="size-11" onClick={() => setEditing(s)}>
-                <Pencil className="size-5" />
-              </IconButton>
-              <IconButton label={`Delete ${s.name}`} className="size-11 text-rose-600" onClick={() => void remove(s)} disabled={s.id === me.id}>
-                <Trash2 className="size-5" />
-              </IconButton>
-            </li>
-          ))}
-        </ul>
+        <div className="-mx-4 overflow-x-auto sm:-mx-5">
+          <table className="w-full min-w-[30rem] text-left">
+            <thead>
+              <tr className="border-b border-line bg-surface-2">
+                <th scope="col" className="py-2 pl-4 pr-3 sm:pl-5">
+                  <ColHead>Name</ColHead>
+                </th>
+                <th scope="col" className="px-3 py-2">
+                  <ColHead>Role</ColHead>
+                </th>
+                <th scope="col" className="px-3 py-2">
+                  <ColHead>Status</ColHead>
+                </th>
+                <th scope="col" className="py-2 pl-3 pr-4 text-right sm:pr-5">
+                  <ColHead>
+                    <span className="sr-only">Actions</span>
+                  </ColHead>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {list.map((s) => (
+                <tr key={s.id} className="transition-colors hover:bg-surface-2">
+                  <td className="py-1.5 pl-4 pr-3 sm:pl-5">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span
+                        className={cx(
+                          "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold",
+                          s.active ? "bg-brand-soft text-brand-ink" : "bg-surface-3 text-muted",
+                        )}
+                      >
+                        {s.name.trim().charAt(0).toUpperCase() || "?"}
+                      </span>
+                      <p className={cx("min-w-0 truncate text-[15px] font-semibold", s.active ? "text-ink" : "text-muted line-through")}>
+                        {s.name}
+                        {s.id === me.id && <span className="ml-1.5 text-sm font-medium text-muted no-underline">(you)</span>}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <Badge tone={ROLE_TONE[s.role]}>{ROLE_LABEL[s.role]}</Badge>
+                  </td>
+                  <td className="px-3 py-1.5">{s.active ? <Badge tone="green">Active</Badge> : <Badge tone="gray">Inactive</Badge>}</td>
+                  <td className="py-1.5 pl-3 pr-2 sm:pr-3">
+                    <div className="flex justify-end">
+                      <IconButton label={`Edit ${s.name}`} className="size-11" onClick={() => setEditing(s)}>
+                        <Pencil className="size-5" />
+                      </IconButton>
+                      <IconButton
+                        label={`Delete ${s.name}`}
+                        className="size-11 text-bad hover:bg-bad-soft hover:text-bad"
+                        onClick={() => void remove(s)}
+                        disabled={s.id === me.id}
+                      >
+                        <Trash2 className="size-5" />
+                      </IconButton>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       <StaffModal key={editing === "new" ? "new" : editing?.id ?? "none"} editing={editing} list={list ?? []} onClose={() => setEditing(null)} />
     </Panel>
@@ -751,7 +790,7 @@ function StaffModal({ editing, list, onClose }: { editing: Staff | "new" | null;
         </Field>
         <Toggle checked={active} onChange={setActive} disabled={isSelf} label="Active" description={isSelf ? "You can't deactivate yourself." : "Inactive staff can't sign in."} />
         {error && (
-          <p className="flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm font-medium text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+          <p className="flex items-center gap-2 rounded-lg bg-bad-soft px-3 py-2.5 text-sm font-medium text-bad">
             <XCircle className="size-4 shrink-0" />
             {error}
           </p>
@@ -808,19 +847,19 @@ function TablesSection() {
           <Spinner />
         </div>
       ) : tables.length === 0 ? (
-        <EmptyState icon={<UtensilsCrossed className="size-7" />} title="No tables yet">
+        <EmptyState icon={<UtensilsCrossed className="size-6" />} title="No tables yet">
           Add tables to seat dine-in orders.
         </EmptyState>
       ) : (
         <div className="space-y-5">
           {groups.map(([area, list]) => (
             <section key={area}>
-              <h3 className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted">
-                {area} <Badge>{list.length}</Badge>
+              <h3 className="mb-2 flex items-center gap-2">
+                <ColHead className="text-xs">{area}</ColHead> <Badge>{list.length}</Badge>
               </h3>
               <ul className="grid gap-2 sm:grid-cols-2">
                 {list.map((t) => (
-                  <li key={t.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface-2 py-1.5 pl-3.5 pr-1.5">
+                  <li key={t.id} className="flex items-center gap-3 rounded-lg border border-line bg-surface-2 py-1 pl-3.5 pr-1">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[15px] font-semibold text-ink">{t.name}</p>
                       <p className="text-sm text-muted">
@@ -830,7 +869,7 @@ function TablesSection() {
                     <IconButton label={`Edit table ${t.name}`} className="size-11" onClick={() => setEditing(t)}>
                       <Pencil className="size-5" />
                     </IconButton>
-                    <IconButton label={`Delete table ${t.name}`} className="size-11 text-rose-600" onClick={() => void remove(t)}>
+                    <IconButton label={`Delete table ${t.name}`} className="size-11 text-bad hover:bg-bad-soft hover:text-bad" onClick={() => void remove(t)}>
                       <Trash2 className="size-5" />
                     </IconButton>
                   </li>
@@ -927,7 +966,12 @@ function TableModal({ editing, areas, nextSort, onClose }: { editing: DiningTabl
             ))}
           </datalist>
         </Field>
-        {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
+        {error && (
+          <p className="flex items-center gap-2 rounded-lg bg-bad-soft px-3 py-2.5 text-sm font-medium text-bad">
+            <XCircle className="size-4 shrink-0" />
+            {error}
+          </p>
+        )}
         <button type="submit" hidden />
       </form>
     </Modal>
@@ -1064,7 +1108,7 @@ function DeviceSection() {
       <Panel title="This device">
         <dl className="grid gap-x-6 gap-y-3 text-[15px] sm:grid-cols-2">
           <Info label="Device name" value={device.deviceName || "—"} />
-          <Info label="Device code" value={<span className="font-mono font-semibold">{device.deviceCode}</span>} />
+          <Info label="Device code" value={<span className="tabular font-semibold tracking-wide">{device.deviceCode}</span>} />
           <Info
             label="Paired with server"
             value={paired ? <Badge tone="green">Paired{device.pairedAt ? ` · ${formatDateTime(device.pairedAt)}` : ""}</Badge> : <Badge tone="amber">Offline only</Badge>}
@@ -1079,20 +1123,26 @@ function DeviceSection() {
         <dl className="mb-4 grid gap-x-6 gap-y-3 text-[15px] sm:grid-cols-2">
           <Info label="Status" value={<Badge tone={st.tone}>{st.label}</Badge>} />
           <Info label="Last synced" value={status.lastSyncAt ? formatDateTime(status.lastSyncAt) : "Never"} />
-          <Info label="Waiting to upload" value={<span className={cx("font-semibold", pending > 0 && "text-amber-600 dark:text-amber-400")}>{pending}</span>} />
-          <Info label="Failed" value={<span className={cx("font-semibold", failed.length > 0 && "text-rose-600")}>{failed.length}</span>} />
+          <Info label="Waiting to upload" value={<span className={cx("font-semibold", pending > 0 && "text-warn")}>{pending}</span>} />
+          <Info label="Failed" value={<span className={cx("font-semibold", failed.length > 0 && "text-bad")}>{failed.length}</span>} />
         </dl>
         {status.lastError && status.state !== "idle" && (
-          <p className="mb-4 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{status.lastError}</p>
+          <p className="mb-4 flex items-start gap-2 rounded-lg bg-bad-soft px-3 py-2.5 text-sm text-bad">
+            <XCircle className="mt-0.5 size-4 shrink-0" />
+            <span>{status.lastError}</span>
+          </p>
         )}
         {failed.length > 0 && (
-          <div className="mb-4 rounded-xl border border-rose-200 dark:border-rose-500/30">
-            <p className="border-b border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 dark:border-rose-500/30 dark:text-rose-300">Changes that failed to upload</p>
+          <div className="mb-4 overflow-hidden rounded-lg border border-line-strong">
+            <p className="flex items-center gap-2 border-b border-line bg-bad-soft px-3 py-2 text-sm font-semibold text-bad">
+              <XCircle className="size-4 shrink-0" />
+              Changes that failed to upload
+            </p>
             <ul className="max-h-60 divide-y divide-line overflow-y-auto">
               {failed.map((f) => (
                 <li key={f.key} className="px-3 py-2 text-sm">
                   <span className="font-semibold text-ink">{f.entity}</span>
-                  <span className="ml-1.5 font-mono text-xs text-muted">{f.recordId.slice(0, 8)}</span>
+                  <span className="tabular ml-1.5 text-xs text-muted">{f.recordId.slice(0, 8)}</span>
                   <span className="block text-muted">{f.lastError ?? "Unknown error"}</span>
                 </li>
               ))}
@@ -1134,7 +1184,9 @@ function DeviceSection() {
         ) : !health ? (
           <p className="text-[15px] text-muted">Server unreachable{online ? "" : " — this device is offline"}. Sales keep working and will sync later.</p>
         ) : !health.ok ? (
-          <p className="text-[15px] text-rose-600">Server error: {health.error ?? "unknown"}</p>
+          <p className="flex items-center gap-2 text-[15px] text-bad">
+            <XCircle className="size-4 shrink-0" />
+            Server error: {health.error ?? "unknown"}</p>
         ) : (
           <div className="space-y-3">
             <dl className="grid gap-x-6 gap-y-3 text-[15px] sm:grid-cols-2">
@@ -1143,11 +1195,11 @@ function DeviceSection() {
                 label="Durable"
                 value={
                   health.durable ? (
-                    <span className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
+                    <span className="flex items-center gap-1.5 font-semibold text-ok">
                       <CheckCircle2 className="size-4" /> Yes
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1.5 font-semibold text-rose-600">
+                    <span className="flex items-center gap-1.5 font-semibold text-bad">
                       <XCircle className="size-4" /> No — data may be lost on redeploy
                     </span>
                   )
@@ -1155,10 +1207,10 @@ function DeviceSection() {
               />
             </dl>
             {health.insecureDefaults && (
-              <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-                <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+              <div className="flex items-start gap-3 rounded-lg border border-warn-line bg-warn-soft p-3.5 text-sm text-ink-2">
+                <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warn" />
                 <p>
-                  <strong>Insecure server configuration.</strong> <code className="font-mono">STORE_ACCESS_CODE</code> and/or <code className="font-mono">AUTH_SECRET</code> are not set, so default
+                  <strong>Insecure server configuration.</strong> <code className="font-semibold text-ink">STORE_ACCESS_CODE</code> and/or <code className="font-semibold text-ink">AUTH_SECRET</code> are not set, so default
                   values are in use. Set them in the server environment before going live.
                 </p>
               </div>
@@ -1176,7 +1228,7 @@ function DeviceSection() {
           <ul className="max-h-80 divide-y divide-line overflow-y-auto">
             {notices.map((n) => (
               <li key={n.id} className="flex items-start gap-3 py-2.5">
-                <Badge tone={n.kind === "rejected" ? "red" : n.kind === "merged" ? "amber" : n.kind === "reset" ? "violet" : "gray"}>{n.kind}</Badge>
+                <Badge tone={n.kind === "rejected" ? "red" : n.kind === "merged" ? "amber" : n.kind === "reset" ? "blue" : "gray"}>{n.kind}</Badge>
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] text-ink">{n.message}</p>
                   <p className="text-xs text-muted">{formatDateTime(n.at)}</p>
@@ -1187,11 +1239,14 @@ function DeviceSection() {
         )}
       </Panel>
 
-      <Card className="border-rose-300 p-4 sm:p-5 dark:border-rose-500/40">
-        <h2 className="text-lg font-bold text-rose-700 dark:text-rose-300">Danger zone</h2>
+      <Card className="border-bad/40 p-4 sm:p-5">
+        <h2 className="flex items-center gap-2 text-[17px] font-bold tracking-[-0.01em] text-bad">
+          <AlertTriangle className="size-5" />
+          Danger zone
+        </h2>
         <p className="mb-3 mt-0.5 text-sm text-muted">
           Erase all data stored on this device and start setup again.
-          {pending > 0 && <strong className="text-rose-600"> {pending} unsynced change{pending === 1 ? "" : "s"} would be lost.</strong>}
+          {pending > 0 && <strong className="text-bad"> {pending} unsynced change{pending === 1 ? "" : "s"} would be lost.</strong>}
         </p>
         <Button variant="danger" icon={<Trash2 className="size-4" />} onClick={() => void onReset()}>
           Reset this device
@@ -1204,7 +1259,7 @@ function DeviceSection() {
 function Info({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-sm font-medium text-muted">{label}</dt>
+      <dt className="text-[13px] font-semibold text-muted">{label}</dt>
       <dd className="mt-0.5 text-ink">{value}</dd>
     </div>
   );
@@ -1237,7 +1292,7 @@ function PairForm({ unauthorized }: { unauthorized: boolean }) {
     <Panel
       title={
         <span className="flex items-center gap-2">
-          <Link2 className="size-5 text-brand" /> {unauthorized ? "Re-pair this device" : "Pair with server"}
+          <Link2 className="size-5 text-brand-ink" /> {unauthorized ? "Re-pair this device" : "Pair with server"}
         </span>
       }
       description={
@@ -1270,7 +1325,7 @@ function AppearanceSection() {
   const [pref, setPref] = useState<ThemePref>(() => getThemePref());
   return (
     <Panel title="Appearance" description="Applies to this device only.">
-      <p className="mb-1.5 text-sm font-semibold text-ink-2">Theme</p>
+      <p className="mb-1.5 text-[13px] font-semibold text-ink-2">Theme</p>
       <Segmented
         value={pref}
         onChange={(v) => {

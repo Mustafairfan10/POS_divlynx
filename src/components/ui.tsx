@@ -26,19 +26,19 @@ type Variant = "primary" | "secondary" | "ghost" | "danger" | "success" | "warni
 type Size = "sm" | "md" | "lg" | "xl";
 
 const VARIANT: Record<Variant, string> = {
-  primary: "bg-brand text-on-brand hover:bg-brand-hover shadow-glow",
+  primary: "bg-brand text-on-brand hover:bg-brand-hover",
   secondary: "bg-surface-3 text-ink hover:bg-line",
-  outline: "border border-line-strong bg-surface text-ink hover:bg-surface-2",
-  ghost: "text-ink-2 hover:bg-surface-3",
-  danger: "bg-rose-600 text-white hover:bg-rose-700 shadow-card",
-  success: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-card",
-  warning: "bg-amber-500 text-amber-950 hover:bg-amber-400 shadow-card",
+  outline: "border border-line-strong bg-surface text-ink hover:border-brand-ink/50 hover:bg-surface-2",
+  ghost: "text-ink-2 hover:bg-surface-3 hover:text-ink",
+  danger: "bg-bad text-surface hover:brightness-110",
+  success: "bg-ok text-surface hover:brightness-110",
+  warning: "bg-warn text-surface hover:brightness-110",
 };
 const SIZE: Record<Size, string> = {
   sm: "h-9 px-3 text-sm gap-1.5 rounded-lg",
-  md: "h-11 px-4 text-[15px] gap-2 rounded-xl",
+  md: "h-11 px-4 text-[15px] gap-2 rounded-lg",
   lg: "h-13 px-5 text-base gap-2 rounded-xl",
-  xl: "h-16 px-6 text-lg gap-2.5 rounded-2xl",
+  xl: "h-16 px-6 text-lg gap-2.5 rounded-xl",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -65,7 +65,7 @@ export function Button({
       {...rest}
       disabled={disabled || loading}
       className={cx(
-        "inline-flex select-none items-center justify-center font-semibold transition-[background,transform,opacity] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex select-none items-center justify-center whitespace-nowrap font-semibold transition-[background,border-color,transform,opacity,filter] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45",
         VARIANT[variant],
         SIZE[size],
         block && "w-full",
@@ -90,7 +90,7 @@ export function IconButton({
       title={label}
       {...rest}
       className={cx(
-        "inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-ink-2 transition hover:bg-surface-3 active:scale-95 disabled:opacity-40",
+        "inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-ink-2 transition hover:bg-surface-3 hover:text-ink active:scale-95 disabled:opacity-40",
         className,
       )}
     >
@@ -104,19 +104,19 @@ export function IconButton({
 export function Field({ label, hint, error, children, className }: { label?: string; hint?: ReactNode; error?: string; children: ReactNode; className?: string }) {
   return (
     <label className={cx("block", className)}>
-      {label && <span className="mb-1.5 block text-sm font-semibold text-ink-2">{label}</span>}
+      {label && <span className="mb-1.5 block text-[13px] font-semibold text-ink-2">{label}</span>}
       {children}
       {error ? (
-        <span className="mt-1 block text-sm font-medium text-rose-600">{error}</span>
+        <span className="mt-1 block text-sm font-medium text-bad">{error}</span>
       ) : hint ? (
-        <span className="mt-1 block text-xs text-muted">{hint}</span>
+        <span className="mt-1 block text-xs leading-relaxed text-muted">{hint}</span>
       ) : null}
     </label>
   );
 }
 
 const inputCls =
-  "w-full rounded-xl border border-line-strong bg-surface px-3.5 text-[15px] text-ink placeholder:text-muted/70 outline-none transition focus:border-brand focus:ring-4 focus:ring-[var(--ring)] disabled:opacity-60";
+  "w-full rounded-lg border border-line-strong bg-surface px-3.5 text-[15px] text-ink placeholder:text-muted outline-none transition focus:border-brand focus:ring-3 focus:ring-[var(--ring)] disabled:opacity-60";
 
 export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...rest} className={cx(inputCls, "h-11", className)} />;
@@ -142,7 +142,7 @@ export function Toggle({ checked, onChange, label, description, disabled }: { ch
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-xl py-1 text-left disabled:opacity-50"
+      className="flex w-full items-center justify-between gap-4 rounded-lg py-1 text-left disabled:opacity-50"
     >
       {(label || description) && (
         <span className="min-w-0">
@@ -150,8 +150,8 @@ export function Toggle({ checked, onChange, label, description, disabled }: { ch
           {description && <span className="block text-sm text-muted">{description}</span>}
         </span>
       )}
-      <span className={cx("relative inline-flex h-7 w-12 shrink-0 rounded-full transition", checked ? "bg-brand" : "bg-line-strong")}>
-        <span className={cx("absolute top-0.5 size-6 rounded-full bg-white shadow transition-all", checked ? "left-[22px]" : "left-0.5")} />
+      <span className={cx("relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors duration-150", checked ? "bg-brand" : "bg-line-strong")}>
+        <span className={cx("absolute top-0.5 size-6 rounded-full bg-surface shadow-card transition-[left] duration-150", checked ? "left-[22px]" : "left-0.5")} />
       </span>
     </button>
   );
@@ -171,7 +171,7 @@ export function Segmented<T extends string>({
   size?: "sm" | "md";
 }) {
   return (
-    <div className={cx("flex rounded-xl bg-surface-3 p-1", className)} role="tablist">
+    <div className={cx("flex divide-x divide-line-strong overflow-hidden rounded-lg border border-line-strong bg-surface", className)} role="tablist">
       {options.map((o) => (
         <button
           key={o.value}
@@ -181,9 +181,9 @@ export function Segmented<T extends string>({
           disabled={o.disabled}
           onClick={() => onChange(o.value)}
           className={cx(
-            "flex flex-1 items-center justify-center gap-1.5 rounded-lg font-semibold transition disabled:opacity-40",
+            "flex flex-1 items-center justify-center gap-1.5 font-semibold transition-colors duration-150 disabled:opacity-40",
             size === "sm" ? "h-8 px-2 text-[13px]" : "h-10 px-3 text-sm",
-            value === o.value ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink",
+            value === o.value ? "bg-brand text-on-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
           )}
         >
           {o.icon}
@@ -199,17 +199,17 @@ export function Segmented<T extends string>({
 const TONES = {
   gray: "bg-surface-3 text-ink-2",
   brand: "bg-brand-soft text-brand-ink",
-  green: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
-  amber: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
-  red: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
-  blue: "bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300",
-  violet: "bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300",
+  green: "bg-ok-soft text-ok",
+  amber: "bg-warn-soft text-warn",
+  red: "bg-bad-soft text-bad",
+  blue: "bg-info-soft text-info",
+  violet: "bg-pen-soft text-pen",
 } as const;
 export type Tone = keyof typeof TONES;
 
 export function Badge({ tone = "gray", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   return (
-    <span className={cx("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold", TONES[tone], className)}>
+    <span className={cx("inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-semibold", TONES[tone], className)}>
       {children}
     </span>
   );
@@ -217,16 +217,21 @@ export function Badge({ tone = "gray", children, className }: { tone?: Tone; chi
 
 export function Card({ className, children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div {...rest} className={cx("rounded-2xl border border-line bg-surface shadow-card", className)}>
+    <div {...rest} className={cx("rounded-xl border border-line bg-surface", className)}>
       {children}
     </div>
   );
 }
 
+/** Condensed printed column head, as on a guest check (QTY · ITEM · AMOUNT). */
+export function ColHead({ children, className }: { children: ReactNode; className?: string }) {
+  return <span className={cx("cond text-[11px] text-brand-ink", className)}>{children}</span>;
+}
+
 export function EmptyState({ icon, title, children, action }: { icon?: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
-      {icon && <div className="mb-1 flex size-14 items-center justify-center rounded-2xl bg-surface-3 text-muted">{icon}</div>}
+      {icon && <div className="mb-1 flex size-12 items-center justify-center rounded-full border border-dashed border-line-strong text-muted">{icon}</div>}
       <p className="text-base font-semibold text-ink">{title}</p>
       {children && <div className="max-w-sm text-sm text-muted">{children}</div>}
       {action && <div className="mt-3">{action}</div>}
@@ -267,17 +272,17 @@ export function Modal({
   const width = { sm: "sm:max-w-sm", md: "sm:max-w-lg", lg: "sm:max-w-2xl", xl: "sm:max-w-4xl" }[size];
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true">
-      <div className="anim-fade absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={dismissable ? onClose : undefined} />
+      <div className="anim-fade absolute inset-0 bg-[#0b120e]/50" onClick={dismissable ? onClose : undefined} />
       <div
         className={cx(
-          "anim-sheet sm:anim-pop relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-surface shadow-pop sm:rounded-3xl",
+          "anim-sheet sm:anim-pop relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-line bg-surface shadow-pop sm:rounded-2xl",
           width,
         )}
       >
         {(title || dismissable) && (
           <div className="flex items-start gap-3 border-b border-line px-5 pb-3.5 pt-4">
             <div className="min-w-0 flex-1">
-              {title && <h2 className="text-lg font-bold leading-tight text-ink">{title}</h2>}
+              {title && <h2 className="text-lg font-bold leading-tight tracking-[-0.01em] text-ink">{title}</h2>}
               {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
             </div>
             {dismissable && (
@@ -314,10 +319,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setTimeout(() => setItems((x) => x.filter((t) => t.id !== id)), kind === "error" ? 6000 : 3200);
   }, []);
   const icon = {
-    success: <CheckCircle2 className="size-5 text-emerald-500" />,
-    error: <XCircle className="size-5 text-rose-500" />,
-    info: <Info className="size-5 text-sky-500" />,
-    warning: <AlertTriangle className="size-5 text-amber-500" />,
+    success: <CheckCircle2 className="size-5 text-ok" />,
+    error: <XCircle className="size-5 text-bad" />,
+    info: <Info className="size-5 text-info" />,
+    warning: <AlertTriangle className="size-5 text-warn" />,
   };
   return (
     <ToastCtx.Provider value={push}>
@@ -326,7 +331,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {items.map((t) => (
           <div
             key={t.id}
-            className="anim-pop pointer-events-auto flex max-w-md items-start gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-[15px] font-medium text-ink shadow-pop"
+            className="anim-pop pointer-events-auto flex max-w-md items-start gap-3 rounded-xl border border-line-strong bg-surface px-4 py-3 text-[15px] font-medium text-ink shadow-pop"
             onClick={() => setItems((x) => x.filter((y) => y.id !== t.id))}
           >
             <span className="mt-0.5 shrink-0">{icon[t.kind]}</span>
@@ -421,8 +426,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                     type="button"
                     onClick={() => setReason(o)}
                     className={cx(
-                      "rounded-full border px-3.5 py-2 text-sm font-medium transition",
-                      reason === o ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong text-ink-2 hover:bg-surface-3",
+                      "rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
+                      reason === o ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-line-strong text-ink-2 hover:bg-surface-2",
                     )}
                   >
                     {o === "__other" ? "Other…" : o}
@@ -455,7 +460,7 @@ export function Keypad({ onKey, className, decimal = true }: { onKey: (k: string
           key={k}
           type="button"
           onClick={() => onKey(k)}
-          className="h-14 rounded-xl bg-surface-3 text-xl font-semibold text-ink transition hover:bg-line active:scale-95"
+          className="h-14 rounded-lg border border-line bg-surface text-xl font-semibold tabular-nums text-ink transition hover:bg-surface-2 active:scale-95 active:bg-surface-3"
         >
           {k}
         </button>

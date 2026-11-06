@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   Banknote,
   Check,
@@ -21,11 +22,10 @@ import {
 import { useSession } from "@/client/session";
 import { useOrder, useOrderPayments, useTables } from "@/client/hooks";
 import { orderPayments, reconcileOrderStatus, recordPayment, sameLine, sendToKitchen, now, updateOrder } from "@/client/repo";
-import { computeTotals, quickCashAmounts, splitEvenly, summarizePayments } from "@/lib/calc";
-import { centsToInput, formatTime, METHOD_LABEL, parseMoney, uid } from "@/lib/format";
+import { activeItems, computeTotals, itemLineTotal, quickCashAmounts, splitEvenly, summarizePayments } from "@/lib/calc";
+import { centsToInput, formatTime, METHOD_LABEL, ORDER_TYPE_LABEL, parseMoney, uid } from "@/lib/format";
 import type { Order, OrderItem, Payment, PaymentMethod } from "@/lib/types";
-import { Badge, Button, EmptyState, Field, Input, Modal, Segmented, Spinner, Toggle, cx, useBusy, useConfirm, useToast } from "../ui";
-import { Receipt } from "../Receipt";
+import { Badge, Button, ColHead, EmptyState, Field, Input, Modal, Segmented, Spinner, Toggle, cx, useBusy, useConfirm, useToast } from "../ui";
 import { OrderLines } from "../OrderLines";
 import { DiscountModal, getFreshOrder, useMoney, useOrderActions } from "../orderActions";
 import { ItemModal } from "../ItemModal";
@@ -53,7 +53,7 @@ export function CheckoutView() {
   if (!order) {
     return (
       <EmptyState icon={<ReceiptIcon className="size-7" />} title="No order selected" action={<Button variant="primary" onClick={() => startNewOrder()}>Start a new order</Button>}>
-        Pick an order from Orders or Tables, or <button className="font-semibold text-brand underline" onClick={() => go("orders")}>view all orders</button>.
+        Pick an order from Orders or Tables, or <button className="font-semibold text-brand-ink underline underline-offset-2" onClick={() => go("orders")}>view all orders</button>.
       </EmptyState>
     );
   }
@@ -61,7 +61,7 @@ export function CheckoutView() {
 }
 
 function Checkout({ order, payments }: { order: Order; payments: Payment[] }) {
-  const { go, settings, startNewOrder } = useSession();
+  const { go, startNewOrder } = useSession();
   const tables = useTables();
   const actions = useOrderActions();
   const [panel, setPanel] = useState<"pay" | "slip" | "edit">("pay");
@@ -74,13 +74,9 @@ function Checkout({ order, payments }: { order: Order; payments: Payment[] }) {
   const slipKind = sum.balance > 0 ? "bill" : "receipt";
 
   const slip = (
-    <div className="rounded-[1.75rem] border border-line bg-surface-3/60 p-3 sm:p-8">
-      <div className="mx-auto max-w-[360px] -rotate-[0.6deg] transition-transform duration-300 hover:rotate-0" style={{ filter: "drop-shadow(0 18px 28px rgba(0,0,0,.35))" }}>
-<div className="torn">
-        <Receipt order={order} payments={approved} settings={settings} kind={slipKind} tableName={tableName} />
-      </div>
-</div>
-      <div className="mx-auto mt-4 flex max-w-[360px] gap-2">
+    <div className="mx-auto max-w-[520px]">
+      <GuestCheck order={order} payments={approved} kind={slipKind} tableName={tableName} status={order.status === "cancelled" ? "cancelled" : sum.status} />
+      <div className="mt-3 flex gap-2">
         <Button variant="outline" block icon={<FileText className="size-4" />} onClick={() => actions.printBill(order)}>
           Print bill
         </Button>
@@ -96,21 +92,23 @@ function Checkout({ order, payments }: { order: Order; payments: Payment[] }) {
   return (
     <div className="flex h-full flex-col">
       {/* Top bar */}
-      <div className="glass flex shrink-0 items-center gap-3 border-b border-line px-3 py-2.5 sm:px-5">
+      <div className="flex shrink-0 items-center gap-3 border-b border-line bg-surface px-3 py-2.5 sm:px-5">
         <Button variant="ghost" size="sm" icon={<ArrowLeft className="size-4" />} onClick={() => go("register")}>
           Order
         </Button>
         <div className="min-w-0 flex-1">
-          <p className="display truncate font-semibold">Checkout · #{order.number}</p>
-          <p className="truncate text-xs text-muted">
+          <p className="truncate text-[17px] font-bold leading-tight tracking-[-0.01em] text-ink">
+            Checkout <span className="serial ml-1">#{order.number}</span>
+          </p>
+          <p className="truncate text-[13px] text-muted">
             {order.type === "dine_in" ? `Dine-in${tableName ? ` · Table ${tableName}` : ""}` : order.type === "takeaway" ? "Takeaway" : "Delivery"}
-            {order.customer.name ? ` · ${order.customer.name}` : ""} · {totals.itemCount} items
+            {order.customer.name ? <> · <span className="pen">{order.customer.name}</span></> : ""} · {totals.itemCount} items
           </p>
         </div>
         <PayStatusBadge status={order.status === "cancelled" ? "cancelled" : sum.status} />
       </div>
       {/* Phone/tablet tabs */}
-      <div className="glass shrink-0 border-b border-line px-3 py-2 lg:hidden">
+      <div className="shrink-0 border-b border-line bg-surface px-3 py-2 lg:hidden">
         <Segmented
           value={panel}
           onChange={setPanel}
@@ -127,7 +125,7 @@ function Checkout({ order, payments }: { order: Order; payments: Payment[] }) {
         <section className="hidden min-w-0 flex-1 flex-col border-r border-line lg:flex">
           <div className="flex items-center justify-between gap-3 px-5 pt-4">
             <Segmented
-              className="w-72"
+              className="w-72 shrink-0"
               value={leftMode}
               onChange={setLeftMode}
               options={[
@@ -135,13 +133,13 @@ function Checkout({ order, payments }: { order: Order; payments: Payment[] }) {
                 { value: "edit", label: "Edit order", icon: <Pencil className="size-4" /> },
               ]}
             />
-            <p className="text-sm text-muted">{leftMode === "slip" ? "Updates live as the order changes" : "Changes update the slip and amount due instantly"}</p>
+            <p className="text-right text-[13px] text-muted">{leftMode === "slip" ? "Updates live as the order changes" : "Changes update the slip and amount due instantly"}</p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-5">{leftMode === "slip" ? slip : editor}</div>
         </section>
 
         {/* Right: payment */}
-        <section className={cx("min-h-0 w-full flex-col overflow-y-auto lg:flex lg:w-[440px] lg:shrink-0", panel === "pay" ? "flex" : "hidden")}>
+        <section className={cx("min-h-0 w-full flex-col overflow-y-auto bg-surface lg:flex lg:w-[440px] lg:shrink-0", panel === "pay" ? "flex" : "hidden")}>
           <PaymentPanel order={order} payments={payments} onDone={() => (order.type === "dine_in" ? go("tables") : startNewOrder())} />
         </section>
         {panel === "slip" && <section className="min-h-0 w-full overflow-y-auto p-3 lg:hidden">{slip}</section>}
@@ -156,12 +154,210 @@ export function PayStatusBadge({ status }: { status: string }) {
     unpaid: { tone: "amber", label: "Unpaid" },
     partial: { tone: "blue", label: "Partially paid" },
     paid: { tone: "green", label: "Paid" },
-    overpaid: { tone: "violet", label: "Overpaid" },
+    overpaid: { tone: "amber", label: "Overpaid" },
     refunded: { tone: "red", label: "Refunded" },
     cancelled: { tone: "red", label: "Cancelled" },
   };
   const m = map[status] ?? map.unpaid;
   return <Badge tone={m.tone}>{m.label}</Badge>;
+}
+
+// ------------------------------------------------------------------ Guest check (live on-screen summary)
+
+function GuestCheck({ order, payments, kind, tableName, status }: { order: Order; payments: Payment[]; kind: "bill" | "receipt"; tableName?: string; status: string }) {
+  const { settings } = useSession();
+  const money = useMoney();
+  const t = computeTotals(order);
+  const pays = payments.filter((p) => !p.deleted && p.status === "approved");
+  const sum = summarizePayments(t.total, pays);
+  const items = activeItems(order);
+  const voided = order.items.filter((i) => i.voided);
+  const cancelled = order.status === "cancelled";
+
+  const facts: Array<{ label: string; value: React.ReactNode }> = [{ label: "Type", value: ORDER_TYPE_LABEL[order.type] }];
+  if (order.type === "dine_in") {
+    facts.push({ label: "Table", value: tableName ?? "—" });
+    facts.push({ label: "Guests", value: order.guests ?? "—" });
+  }
+  facts.push({ label: "Server", value: order.createdBy });
+  facts.push({ label: "Time", value: formatTime(order.createdAt) });
+
+  const c = order.customer;
+
+  return (
+    <article className="overflow-hidden rounded-xl border border-line bg-surface" aria-label={`${kind === "bill" ? "Guest check" : "Receipt"} for order ${order.number}`}>
+      {/* Identity */}
+      <header className="flex items-start justify-between gap-3 px-4 pb-3 pt-4">
+        <div className="min-w-0">
+          <p className="truncate text-[13px] font-semibold text-muted">{settings.businessName}</p>
+          <h3 className="text-lg font-bold leading-tight tracking-[-0.01em] text-ink">{kind === "bill" ? "Guest check" : "Receipt"}</h3>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span className="serial text-2xl leading-none">#{order.number}</span>
+          <PayStatusBadge status={status} />
+        </div>
+      </header>
+
+      {/* Boxed facts row */}
+      <div className="mx-4 flex divide-x divide-line rounded-lg border border-line-strong">
+        {facts.map((f) => (
+          <div key={f.label} className="min-w-0 flex-1 px-2.5 py-1.5">
+            <ColHead className="block">{f.label}</ColHead>
+            <p className="truncate text-sm font-semibold tabular text-ink">{f.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {(c.name || c.phone || (order.type === "delivery" && c.address)) && (
+        <div className="mx-4 mt-2 rounded-lg border border-line px-2.5 py-1.5">
+          <ColHead className="block">Customer</ColHead>
+          <p className="pen text-sm font-medium">
+            {[c.name, c.phone].filter(Boolean).join(" · ")}
+            {order.type === "delivery" && c.address && <span className="block font-normal">{c.address}</span>}
+          </p>
+        </div>
+      )}
+
+      {/* Lines */}
+      <div className="mt-4">
+        <div className="grid grid-cols-[2.75rem_1fr_auto] gap-x-2 border-y border-line bg-surface-2 px-4 py-1.5">
+          <ColHead>Qty</ColHead>
+          <ColHead>Item</ColHead>
+          <ColHead className="text-right">Amount</ColHead>
+        </div>
+        {items.length === 0 && voided.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-muted">No items yet. Use “Edit order” to add some.</p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {items.map((it) => {
+              const unit = it.basePrice + it.modifiers.reduce((s, m) => s + m.price, 0);
+              return (
+                <li key={it.id} className="anim-line grid grid-cols-[2.75rem_1fr_auto] gap-x-2 px-4 py-2">
+                  <span className="text-[15px] font-semibold tabular text-ink">{it.qty}</span>
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold leading-snug text-ink">{it.name}</p>
+                    {it.qty > 1 && <p className="text-xs text-muted tabular">@ {money(unit)} each</p>}
+                    {it.modifiers.map((m) => (
+                      <p key={m.optionId} className="pen text-sm leading-snug">
+                        + {m.name}
+                        {m.price !== 0 && <span className="tabular"> ({money(m.price)})</span>}
+                      </p>
+                    ))}
+                    {it.notes && <p className="pen text-sm leading-snug">“{it.notes}”</p>}
+                  </div>
+                  <span className="text-[15px] font-semibold tabular text-ink">{money(itemLineTotal(it))}</span>
+                </li>
+              );
+            })}
+            {voided.map((it) => (
+              <li key={it.id} className="grid grid-cols-[2.75rem_1fr_auto] gap-x-2 px-4 py-2 text-muted">
+                <span className="text-[15px] tabular line-through">{it.qty}</span>
+                <div className="min-w-0">
+                  <p className="text-[15px] leading-snug">
+                    <span className="line-through">{it.name}</span> <Badge tone="red">{it.voided?.refunded ? "Refunded" : "Void"}</Badge>
+                  </p>
+                  {it.voided?.reason && <p className="pen text-sm leading-snug">{it.voided.reason}</p>}
+                </div>
+                <span className="text-[15px] tabular line-through">{money(itemLineTotal(it))}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {order.note && (
+        <div className="border-t border-line px-4 py-2">
+          <ColHead className="block">Note</ColHead>
+          <p className="pen text-sm">{order.note}</p>
+        </div>
+      )}
+
+      {/* Totals */}
+      <div className="border-t border-line px-4 pb-4 pt-2">
+        <dl className="space-y-1 text-sm text-ink-2">
+          <CheckRow label={`Subtotal (${t.itemCount} item${t.itemCount === 1 ? "" : "s"})`} value={money(t.subtotal)} />
+          {t.discount > 0 && (
+            <CheckRow
+              label={
+                <>
+                  Discount{order.discount?.type === "percent" ? ` ${order.discount.value}%` : ""}
+                  {order.discount?.reason ? <span className="pen"> · {order.discount.reason}</span> : ""}
+                </>
+              }
+              value={`−${money(t.discount)}`}
+            />
+          )}
+          {t.serviceCharge > 0 && <CheckRow label={`Service charge ${order.serviceChargeRate}%`} value={money(t.serviceCharge)} />}
+          {t.deliveryFee > 0 && <CheckRow label="Delivery fee" value={money(t.deliveryFee)} />}
+          {(t.tax > 0 || order.taxRate > 0) && <CheckRow label={order.taxInclusive ? `Incl. tax ${order.taxRate}%` : `Tax ${order.taxRate}%`} value={money(t.tax)} />}
+          {t.tip > 0 && <CheckRow label="Tip" value={<span className="pen">{money(t.tip)}</span>} />}
+          {(order.adjustments ?? []).map((a) => (
+            <CheckRow key={a.id} label={<>Credit · <span className="pen">{a.reason}</span></>} value={`−${money(a.amount)}`} />
+          ))}
+        </dl>
+        <div className="rule-double mt-2.5 flex items-baseline justify-between gap-3 pt-2">
+          <span className="cond text-[13px] text-brand-ink">Total</span>
+          <span data-testid="slip-total" className="display text-2xl text-ink">{money(t.total)}</span>
+        </div>
+
+        {pays.length > 0 && (
+          <div className="mt-3 border-t border-line pt-2">
+            <ColHead className="mb-1 block">Paid by</ColHead>
+            <dl className="space-y-1 text-sm text-ink-2">
+              {pays.map((p) => (
+                <CheckRow
+                  key={p.id}
+                  label={
+                    <>
+                      {p.kind === "refund" ? "Refund · " : ""}
+                      {METHOD_LABEL[p.method]}
+                      {p.reference ? <span className="text-muted"> · {p.reference}</span> : ""}
+                      {p.method === "cash" && p.tendered != null && p.kind === "payment" && p.tendered > p.amount && (
+                        <span className="block text-xs text-muted tabular">
+                          Tendered {money(p.tendered)} · change {money(p.change ?? 0)}
+                        </span>
+                      )}
+                    </>
+                  }
+                  value={<span className={cx(p.kind === "refund" && "text-bad")}>{p.kind === "refund" ? `−${money(p.amount)}` : money(p.amount)}</span>}
+                />
+              ))}
+            </dl>
+            {sum.balance > 0 && !cancelled && (
+              <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-line pt-2">
+                <span className="cond text-[13px] text-warn">Balance due</span>
+                <span className="display text-lg text-ink">{money(sum.balance)}</span>
+              </div>
+            )}
+            {sum.balance < 0 && !cancelled && (
+              <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-line pt-2">
+                <span className="cond text-[13px] text-warn">Credit due</span>
+                <span className="display text-lg text-ink">{money(-sum.balance)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {order.cancelled && (
+          <p className="mt-3 flex items-start gap-2 rounded-lg bg-bad-soft px-3 py-2 text-sm font-medium text-bad">
+            <XCircle className="mt-0.5 size-4 shrink-0" />
+            <span>
+              Cancelled by {order.cancelled.by}: <span className="pen">{order.cancelled.reason}</span>
+            </span>
+          </p>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function CheckRow({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="min-w-0">{label}</dt>
+      <dd className="shrink-0 tabular text-ink">{value}</dd>
+    </div>
+  );
 }
 
 // ------------------------------------------------------------------ Edit order (inline in checkout)
@@ -223,14 +419,14 @@ function EditOrderPanel({ order, onAddItems }: { order: Order; onAddItems: () =>
 
   if (locked) {
     return (
-      <div className="mx-auto max-w-lg py-10 text-center">
-        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-surface-3">
-          <Lock className="size-7 text-muted" />
+      <div className="mx-auto max-w-lg rounded-xl border border-line bg-surface px-6 py-10 text-center">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border border-dashed border-line-strong">
+          <Lock className="size-6 text-muted" />
         </div>
-        <p className="text-lg font-bold">{order.status === "cancelled" ? "Cancelled orders can’t be edited" : "This order is fully paid"}</p>
+        <p className="text-lg font-bold tracking-[-0.01em] text-ink">{order.status === "cancelled" ? "Cancelled orders can’t be edited" : "This order is fully paid"}</p>
         {order.status === "closed" && (
           <>
-            <p className="mt-1 text-muted">Editing a paid order needs manager approval. If the total changes you’ll be guided to collect the difference or refund it.</p>
+            <p className="mt-1 text-sm text-muted">Editing a paid order needs manager approval. If the total changes you’ll be guided to collect the difference or refund it.</p>
             <Button className="mt-4" variant="primary" icon={<Lock className="size-4" />} onClick={async () => (await actions.unlockClosed(order)) && setUnlocked(true)}>
               Unlock to edit
             </Button>
@@ -244,9 +440,9 @@ function EditOrderPanel({ order, onAddItems }: { order: Order; onAddItems: () =>
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="rounded-2xl border border-line bg-surface p-3 sm:p-4">
+      <div className="rounded-xl border border-line bg-surface p-3 sm:p-4">
         <div className="mb-1 flex items-center justify-between">
-          <h3 className="font-bold">Items</h3>
+          <h3 className="text-base font-bold tracking-[-0.01em] text-ink">Items</h3>
           <Button size="sm" variant="outline" icon={<Plus className="size-4" />} onClick={onAddItems}>
             Add items
           </Button>
@@ -254,12 +450,12 @@ function EditOrderPanel({ order, onAddItems }: { order: Order; onAddItems: () =>
         <OrderLines order={order} {...handlers} />
       </div>
 
-      <div className="mt-3 space-y-3 rounded-2xl border border-line bg-surface p-4">
-        <h3 className="font-bold">Adjustments</h3>
-        <button onClick={() => setDiscountOpen(true)} className="flex w-full items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-left hover:bg-surface-2">
-          <Percent className="size-5 text-muted" />
-          <span className="flex-1 font-semibold">Discount</span>
-          <span className="text-sm text-muted">
+      <div className="mt-3 space-y-3 rounded-xl border border-line bg-surface p-4">
+        <h3 className="text-base font-bold tracking-[-0.01em] text-ink">Adjustments</h3>
+        <button onClick={() => setDiscountOpen(true)} className="flex min-h-11 w-full items-center gap-3 rounded-lg border border-line-strong px-3 py-2.5 text-left transition-colors duration-150 hover:bg-surface-2">
+          <Percent className="size-5 text-brand-ink" />
+          <span className="flex-1 font-semibold text-ink">Discount</span>
+          <span className="text-sm tabular text-muted">
             {order.discount ? `${order.discount.type === "percent" ? `${order.discount.value}%` : money(order.discount.value)} · −${money(totals.discount)}` : "None"}
           </span>
         </button>
@@ -453,37 +649,44 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
       {/* Amount due */}
       <div
         className={cx(
-          "relative overflow-hidden rounded-[1.75rem] border p-6 text-center",
-          paid ? "border-emerald-500/30 bg-emerald-500/10" : sum.balance < 0 ? "border-violet-500/30 bg-violet-500/10" : "glass border-line",
+          "rounded-xl border p-5",
+          paid ? "border-ok/40 bg-ok-soft" : sum.balance < 0 ? "border-warn-line bg-warn-soft" : "border-line-strong bg-surface-2",
         )}
       >
         {paid ? (
           <>
             <PaidMoment />
-            <p className="relative mt-3 text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Paid in full</p>
-            <p className="display relative text-4xl font-semibold">{money(totals.total)}</p>
+            <p className="mt-3 text-[13px] font-semibold text-ok">Paid in full</p>
+            <p className="display text-[40px] leading-none text-ink">{money(totals.total)}</p>
             {lastChange != null && lastChange > 0 && (
-              <p className="anim-rise relative mt-3 rounded-2xl bg-brand py-2.5 text-lg font-bold text-on-brand shadow-glow">Give change: {money(lastChange)}</p>
+              <p className="anim-pop mt-4 flex items-baseline justify-between gap-3 rounded-lg bg-brand px-4 py-3 text-on-brand">
+                <span className="text-[15px] font-semibold">Give change</span>
+                <span className="display text-2xl">{money(lastChange)}</span>
+              </p>
             )}
           </>
         ) : sum.balance < 0 ? (
           <>
-            <p className="text-sm font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">Customer is owed</p>
-            <p className="display text-4xl font-semibold">{money(-sum.balance)}</p>
-            <p className="mt-1 text-sm text-muted">The order now costs less than what was paid.</p>
+            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-warn">
+              <AlertTriangle className="size-4" /> Customer is owed
+            </p>
+            <p className="display mt-1 text-[40px] leading-none text-ink">{money(-sum.balance)}</p>
+            <p className="mt-2 text-sm text-ink-2">The order now costs less than what was paid.</p>
             <Button className="mt-3" variant="primary" onClick={refundOverpayment} loading={busy}>
               Refund {money(-sum.balance)}
             </Button>
           </>
         ) : (
           <>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">{sum.paid > 0 ? "Remaining balance" : "Amount due"}</p>
-            <p key={sum.balance} className="display anim-bump mt-1 text-[3.25rem] font-semibold leading-none text-brand-ink">{money(sum.balance)}</p>
-            {sum.paid > 0 && (
-              <p className="mt-1 text-sm text-muted">
-                {money(sum.net)} of {money(totals.total)} paid
-              </p>
-            )}
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-[13px] font-semibold text-ink-2">{sum.paid > 0 ? "Remaining balance" : "Amount due"}</p>
+              {sum.paid > 0 && (
+                <p className="text-[13px] text-muted tabular">
+                  {money(sum.net)} of {money(totals.total)} paid
+                </p>
+              )}
+            </div>
+            <p className="display mt-1.5 text-[44px] leading-none text-ink">{money(sum.balance)}</p>
           </>
         )}
       </div>
@@ -503,8 +706,8 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
           {/* Tip */}
           {canTip && (
             <div>
-              <p className="mb-2 text-sm font-semibold text-ink-2">Tip</p>
-              <div className="flex flex-wrap gap-2">
+              <p className="mb-2 text-[13px] font-semibold text-ink-2">Tip</p>
+              <div className="grid grid-cols-3 gap-2">
                 <Chip active={order.tip === 0} onClick={() => setTip(0)}>
                   No tip
                 </Chip>
@@ -512,7 +715,8 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
                   const v = Math.round((tipBase * p) / 100);
                   return (
                     <Chip key={p} active={order.tip === v && v > 0} onClick={() => setTip(v)}>
-                      {p}% <span className="text-muted">· {money(v)}</span>
+                      <span>{p}%</span>
+                      <span className="text-xs font-medium tabular opacity-75">{money(v)}</span>
                     </Chip>
                   );
                 })}
@@ -522,7 +726,7 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
               </div>
               {customTip && (
                 <div className="mt-2 flex gap-2">
-                  <Input inputMode="decimal" autoFocus value={tipStr} onChange={(e) => setTipStr(e.target.value)} placeholder="0.00" />
+                  <Input inputMode="decimal" autoFocus value={tipStr} onChange={(e) => setTipStr(e.target.value)} placeholder="0.00" className="pen tabular" />
                   <Button
                     variant="primary"
                     onClick={async () => {
@@ -540,41 +744,48 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
           )}
 
           {/* Split */}
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-3 py-2">
-            <span className="flex items-center gap-2 text-sm font-semibold">
-              <Split className="size-4 text-muted" /> Split equally
-            </span>
-            <div className="flex items-center gap-2">
-              <button className="flex size-9 items-center justify-center rounded-lg bg-surface-3 disabled:opacity-40" disabled={splitN <= 1} onClick={() => setSplitN((n) => n - 1)} aria-label="Fewer ways">
-                <Minus className="size-4" />
-              </button>
-              <span className="w-20 text-center text-sm font-bold">{splitN === 1 ? "No split" : `${splitN} ways`}</span>
-              <button className="flex size-9 items-center justify-center rounded-lg bg-surface-3" onClick={() => setSplitN((n) => Math.min(20, n + 1))} aria-label="More ways">
-                <Plus className="size-4" />
-              </button>
+          <div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-line-strong bg-surface py-1 pl-3 pr-1">
+              <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <Split className="size-4 text-brand-ink" /> Split equally
+              </span>
+              <div className="flex items-center divide-x divide-line-strong overflow-hidden rounded-md border border-line-strong">
+                <button className="flex size-9 items-center justify-center text-ink-2 transition-colors hover:bg-surface-2 disabled:opacity-40" disabled={splitN <= 1} onClick={() => setSplitN((n) => n - 1)} aria-label="Fewer ways">
+                  <Minus className="size-4" />
+                </button>
+                <span className="flex h-9 w-20 items-center justify-center text-sm font-bold tabular text-ink">{splitN === 1 ? "No split" : `${splitN} ways`}</span>
+                <button className="flex size-9 items-center justify-center text-ink-2 transition-colors hover:bg-surface-2" onClick={() => setSplitN((n) => Math.min(20, n + 1))} aria-label="More ways">
+                  <Plus className="size-4" />
+                </button>
+              </div>
             </div>
+            {splitN > 1 && (
+              <p className="mt-1.5 px-1 text-sm text-muted tabular">
+                Guest {Math.min(paymentCount + 1, splitN)} of {splitN} · each pays about {money(shares[0])}
+              </p>
+            )}
           </div>
-          {splitN > 1 && (
-            <p className="-mt-2 px-1 text-sm text-muted">
-              Guest {Math.min(paymentCount + 1, splitN)} of {splitN} · each pays about {money(shares[0])}
-            </p>
-          )}
 
           {/* Method */}
-          <div className="grid grid-cols-4 gap-2">
-            {METHODS.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => setMethod(m.id)}
-                className={cx(
-                  "flex h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 text-sm font-semibold transition active:scale-95",
-                  method === m.id ? "border-brand bg-brand-soft text-brand-ink shadow-glow" : "border-line bg-surface text-ink-2 hover:border-line-strong",
-                )}
-              >
-                <m.icon className="size-6" />
-                {m.label}
-              </button>
-            ))}
+          <div>
+            <p className="mb-2 text-[13px] font-semibold text-ink-2">Payment method</p>
+            <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Payment method">
+              {METHODS.map((m) => (
+                <button
+                  key={m.id}
+                  role="radio"
+                  aria-checked={method === m.id}
+                  onClick={() => setMethod(m.id)}
+                  className={cx(
+                    "flex h-16 flex-col items-center justify-center gap-1 rounded-xl border text-sm font-semibold transition-colors duration-150",
+                    method === m.id ? "border-brand bg-brand text-on-brand" : "border-line-strong bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink",
+                  )}
+                >
+                  <m.icon className="size-5" />
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <Field label="Amount to charge" error={amountStr && !amountValid ? (amount > sum.balance ? `Max ${money(sum.balance)}` : "Invalid amount") : undefined}>
@@ -583,21 +794,34 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
 
           {method === "cash" && (
             <div>
-              <p className="mb-2 text-sm font-semibold text-ink-2">Cash received</p>
+              <p className="mb-2 text-[13px] font-semibold text-ink-2">Cash received</p>
               <div className="mb-2 grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-3">
                 {quickCashAmounts(Number.isFinite(amount) ? amount : 0).map((v) => (
                   <button
                     key={v}
+                    aria-pressed={tendered === v}
                     onClick={() => setTenderedStr(centsToInput(v))}
-                    className={cx("h-12 rounded-xl border text-[15px] font-bold tabular transition", tendered === v ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong bg-surface hover:bg-surface-3")}
+                    className={cx(
+                      "h-12 rounded-lg border text-[15px] font-semibold tabular transition-colors duration-150",
+                      tendered === v ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong bg-surface text-ink hover:bg-surface-2",
+                    )}
                   >
                     {v === amount ? "Exact" : money(v)}
                   </button>
                 ))}
               </div>
-              <Input inputMode="decimal" value={tenderedStr} onChange={(e) => setTenderedStr(e.target.value)} placeholder="Other amount" />
-              {change > 0 && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-center text-lg font-bold text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">Change: {money(change)}</p>}
-              {!cashOk && <p className="mt-2 text-sm font-medium text-rose-600">Cash received is less than the amount.</p>}
+              <Input inputMode="decimal" value={tenderedStr} onChange={(e) => setTenderedStr(e.target.value)} placeholder="Other amount" className="pen tabular" />
+              {change > 0 && (
+                <p className="mt-2 flex items-baseline justify-between gap-3 rounded-lg border border-warn-line bg-warn-soft px-3 py-2">
+                  <span className="text-sm font-semibold text-warn">Change</span>
+                  <span className="display text-xl text-ink">{money(change)}</span>
+                </p>
+              )}
+              {!cashOk && (
+                <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-bad">
+                  <AlertTriangle className="size-4" /> Cash received is less than the amount.
+                </p>
+              )}
             </div>
           )}
 
@@ -606,18 +830,21 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
           </Button>
         </>
       ) : (
-        <p className="text-center text-muted">Add items to this order to take payment.</p>
+        <p className="text-center text-sm text-muted">Add items to this order to take payment.</p>
       )}
 
       {/* Payments list */}
       {payments.length > 0 && (
-        <div className="rounded-2xl border border-line bg-surface">
-          <p className="border-b border-line px-4 py-2.5 text-sm font-bold">Payments</p>
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="flex items-center justify-between border-b border-line bg-surface-2 px-4 py-1.5">
+            <ColHead>Payments</ColHead>
+            <ColHead>Amount</ColHead>
+          </div>
           <ul className="divide-y divide-line">
             {payments.map((p) => (
               <li key={p.id} className={cx("flex items-center gap-3 px-4 py-2.5", p.status !== "approved" && "opacity-60")}>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">
+                  <p className="text-sm font-semibold text-ink">
                     {p.kind === "refund" ? "Refund · " : ""}
                     {METHOD_LABEL[p.method]}
                     {p.status === "declined" && <Badge tone="red" className="ml-2">Declined</Badge>}
@@ -630,12 +857,12 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
                     {p.tendered != null && p.tendered > p.amount ? ` · tendered ${money(p.tendered)}, change ${money(p.change ?? 0)}` : ""}
                   </p>
                 </div>
-                <span className={cx("font-bold tabular", p.kind === "refund" && "text-rose-600", p.status !== "approved" && "line-through")}>
+                <span className={cx("font-bold tabular text-ink", p.kind === "refund" && "text-bad", p.status !== "approved" && "line-through")}>
                   {p.kind === "refund" ? "−" : ""}
                   {money(p.amount)}
                 </span>
                 {p.status === "approved" && p.kind === "payment" && (
-                  <button onClick={() => actions.voidPayment(p)} className="rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:bg-surface-3 hover:text-rose-600">
+                  <button onClick={() => actions.voidPayment(p)} className="rounded-md px-2 py-1 text-xs font-semibold text-muted transition-colors hover:bg-bad-soft hover:text-bad">
                     Void
                   </button>
                 )}
@@ -667,15 +894,17 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
           </>
         }
       >
-        <div className="py-2 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-muted">Charge on terminal</p>
-          <p className="text-5xl font-bold tabular">{terminal ? money(terminal.amount) : ""}</p>
-          <div className="mx-auto mt-4 flex size-14 animate-pulse items-center justify-center rounded-2xl bg-brand-soft text-brand">
-            {terminal?.method === "wallet" ? <Smartphone className="size-7" /> : <CreditCard className="size-7" />}
+        <div className="flex items-center gap-4 rounded-xl border border-line-strong bg-surface-2 px-4 py-4">
+          <div className="flex size-12 shrink-0 animate-pulse items-center justify-center rounded-lg bg-brand-soft text-brand-ink">
+            {terminal?.method === "wallet" ? <Smartphone className="size-6" /> : <CreditCard className="size-6" />}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-ink-2">Charge on terminal</p>
+            <p className="display text-[40px] leading-none text-ink">{terminal ? money(terminal.amount) : ""}</p>
           </div>
         </div>
-        <Field label="Approval code / last 4 digits (optional)" className="mt-3">
-          <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. 4242" />
+        <Field label="Approval code / last 4 digits (optional)" className="mt-4">
+          <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. 4242" className="pen" />
         </Field>
       </Modal>
     </div>
@@ -685,25 +914,23 @@ function PaymentPanel({ order, payments, onDone }: { order: Order; payments: Pay
 function Chip({ active, onClick, children }: { active?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
+      aria-pressed={!!active}
       onClick={onClick}
-      className={cx("h-10 rounded-full border px-3.5 text-sm font-semibold transition", active ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong bg-surface hover:bg-surface-3")}
+      className={cx(
+        "flex min-h-11 flex-col items-center justify-center rounded-lg border px-2 py-1 text-sm font-semibold leading-tight transition-colors duration-150",
+        active ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink",
+      )}
     >
       {children}
     </button>
   );
 }
 
-/** The checkout's celebratory beat: two light rings burst and a check mark draws itself. */
+/** Paid confirmation: a flat check mark in the success colour. */
 function PaidMoment() {
   return (
-    <div className="relative mx-auto flex size-20 items-center justify-center" aria-hidden>
-      <span className="absolute inset-0 rounded-full border-2 border-emerald-500/60" style={{ animation: "burst 1s ease-out forwards" }} />
-      <span className="absolute inset-0 rounded-full border-2 border-brand/60" style={{ animation: "burst 1.2s .15s ease-out forwards" }} />
-      <span className="flex size-20 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_10px_30px_-8px_rgba(16,185,129,.7)]">
-        <svg viewBox="0 0 24 24" className="size-10" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M5 12.5l4.5 4.5L19 7.5" strokeDasharray="24" strokeDashoffset="24" style={{ animation: "draw .5s .2s ease-out forwards" }} />
-        </svg>
-      </span>
+    <div className="anim-pop flex size-11 items-center justify-center rounded-full bg-ok text-surface" aria-hidden>
+      <Check className="size-6" strokeWidth={3} />
     </div>
   );
 }

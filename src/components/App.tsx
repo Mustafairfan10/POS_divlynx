@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   BarChart3,
-  Coffee,
   ChefHat,
   ClipboardList,
   CloudOff,
@@ -22,7 +21,7 @@ import { seedStore, hasLocalData, usingDefaultAdminPin, DEFAULT_PINS } from "@/c
 import { applyTheme } from "@/client/theme";
 import { PinPad, SessionProvider, useSession, roleCan, ROLE_LABEL, type View, type Perm } from "@/client/session";
 import { useNotices, useOnline, useSyncStatus } from "@/client/hooks";
-import { Button, ConfirmProvider, Field, Input, Modal, Spinner, ToastProvider, cx, useToast } from "./ui";
+import { Button, ColHead, ConfirmProvider, Field, Input, Modal, Spinner, ToastProvider, cx, useToast } from "./ui";
 import { SyncIndicator } from "./SyncIndicator";
 import { uid } from "@/lib/format";
 import type { Staff } from "@/lib/types";
@@ -45,12 +44,18 @@ export default function App() {
 
   useEffect(() => {
     applyTheme();
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onScheme = () => applyTheme();
+    mq.addEventListener("change", onScheme);
     const stop = startSync();
     navigator.storage?.persist?.().catch(() => {});
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {});
     }
-    return stop;
+    return () => {
+      mq.removeEventListener("change", onScheme);
+      stop();
+    };
   }, []);
 
   let body: React.ReactNode;
@@ -79,41 +84,18 @@ function Splash() {
   );
 }
 
-function Logo({ className }: { className?: string }) {
+/** The store's mark: its initials, set condensed like a printed pad heading. */
+function Logo({ name, className }: { name?: string; className?: string }) {
+  const initials =
+    (name ?? "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]!.toUpperCase())
+      .join("") || "POS";
   return (
-    <div className={cx("flex items-center justify-center rounded-2xl bg-brand text-on-brand shadow-glow", className)}>
-      <Coffee className="size-1/2" strokeWidth={2.2} />
-    </div>
-  );
-}
-
-/** Warm ambient light + grain behind every screen. */
-function Ambient() {
-  return (
-    <div className="ambient" aria-hidden>
-      <div className="grain" />
-    </div>
-  );
-}
-
-/** A cup with rising steam: the login screen's one animated moment. */
-function SteamingCup() {
-  return (
-    <div className="relative h-40 w-44" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="absolute bottom-24 h-14 w-2.5 rounded-full bg-gradient-to-t from-brand/50 to-transparent blur-[3px]"
-          style={{ left: 58 + i * 22, animation: "steam 3.2s ease-out " + i * 0.9 + "s infinite" }}
-        />
-      ))}
-      <svg viewBox="0 0 176 120" className="absolute bottom-0 w-44">
-        <ellipse cx="80" cy="112" rx="72" ry="7" fill="var(--brand)" opacity="0.18" />
-        <path d="M24 34h112v34a46 46 0 0 1-46 46H70a46 46 0 0 1-46-46z" fill="var(--surface-3)" stroke="var(--brand)" strokeWidth="3" />
-        <path d="M136 46h10a18 18 0 0 1 0 36h-12" fill="none" stroke="var(--brand)" strokeWidth="3" strokeLinecap="round" />
-        <ellipse cx="80" cy="34" rx="56" ry="9" fill="var(--brand)" opacity="0.9" />
-        <ellipse cx="80" cy="33" rx="40" ry="5" fill="var(--on-brand)" opacity="0.25" />
-      </svg>
+    <div aria-hidden className={cx("cond flex items-center justify-center rounded-lg border-2 border-current text-[15px] tracking-[0.04em]", className)}>
+      {initials}
     </div>
   );
 }
@@ -165,15 +147,16 @@ function SetupScreen() {
   }
 
   return (
-    <div className="relative flex min-h-dvh items-center justify-center p-4">
-      <Ambient />
-      <div className="anim-rise relative z-10 w-full max-w-md">
-        <div className="mb-6 flex flex-col items-center text-center">
-          <Logo className="mb-4 size-16" />
-          <h1 className="display text-2xl font-semibold">Set up this device</h1>
-          <p className="mt-1 text-[15px] text-muted">Connect this tablet, phone or computer to your store. You only need to do this once.</p>
+    <div className="flex min-h-dvh items-center justify-center bg-bg p-4">
+      <div className="anim-pop w-full max-w-md">
+        <div className="mb-6 flex items-center gap-3">
+          <Logo name={businessName || "Cafe POS"} className="size-12 shrink-0 text-brand-ink" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-[-0.015em]">Set up this device</h1>
+            <p className="text-[15px] text-ink-2">Connect this tablet, phone or computer to your store. You only need to do this once.</p>
+          </div>
         </div>
-        <div className="glass space-y-4 rounded-[2rem] border border-line p-6 shadow-pop">
+        <div className="space-y-4 rounded-xl border border-line bg-surface p-6 shadow-card">
           {stage === "downloading" ? (
             <div className="flex flex-col items-center gap-3 py-8 text-center">
               <Spinner className="size-8" />
@@ -190,13 +173,14 @@ function SetupScreen() {
               <Field label="Business name" hint="Only used if this is a brand-new store.">
                 <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="e.g. Corner Café" />
               </Field>
-              {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{error}</p>}
+              {error && <p role="alert" className="rounded-lg bg-bad-soft px-3 py-2 text-sm font-medium text-bad">{error}</p>}
               <Button variant="primary" size="lg" block loading={busy} disabled={!accessCode.trim() || !online} onClick={connect}>
                 {online ? "Connect device" : "Offline — connect later"}
               </Button>
-              <div className="relative py-1 text-center text-xs text-muted">
-                <span className="relative z-10 bg-surface px-2">or</span>
-                <span className="absolute inset-x-0 top-1/2 border-t border-line" />
+              <div className="flex items-center gap-3 text-xs text-muted">
+                <span className="h-px flex-1 bg-line" />
+                or
+                <span className="h-px flex-1 bg-line" />
               </div>
               <Button variant="outline" block onClick={offline} icon={<CloudOff className="size-4" />}>
                 Start offline, pair later
@@ -233,85 +217,86 @@ function LoginScreen() {
     return () => clearInterval(t);
   }, []);
 
+  const time = now?.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return (
-    <div className="relative min-h-dvh overflow-hidden">
-      <Ambient />
-      <div className="relative z-10 grid min-h-dvh lg:grid-cols-[1.15fr_1fr]">
-        <section className="hidden flex-col justify-between p-12 lg:flex">
-          <div className="flex items-center gap-3">
-            <Logo className="size-12" />
-            <div>
-              <p className="display text-lg font-semibold">{settings?.businessName ?? "POS"}</p>
-              <p className="text-sm text-muted">Point of sale</p>
-            </div>
+    <div className="grid min-h-dvh bg-bg lg:grid-cols-[minmax(0,1fr)_minmax(460px,0.9fr)]">
+      {/* The pad's cover: store, clock and the state of service. */}
+      <section className="hidden flex-col justify-between bg-rail p-12 text-rail-on lg:flex">
+        <div className="flex items-center gap-3">
+          <Logo name={settings?.businessName} className="size-12 text-rail-on" />
+          <div>
+            <p className="text-lg font-bold leading-tight">{settings?.businessName ?? "Cafe POS"}</p>
+            <p className="text-sm text-rail-ink">Point of sale</p>
           </div>
-          <div className="anim-rise">
-            <SteamingCup />
-            <p className="mt-6 text-lg text-ink-2">{greeting(now)}</p>
-            <p className="display text-[clamp(4rem,9vw,7.5rem)] font-semibold leading-none">
-              {now?.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-            </p>
-            <p className="mt-3 text-xl text-muted">{now?.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</p>
-            {service && (
-              <div className="mt-8 flex flex-wrap gap-3">
-                <ServiceStat value={service.open} label={service.open === 1 ? "open check" : "open checks"} />
-                <ServiceStat value={service.kitchen} label="in the kitchen" />
-                <ServiceStat value={service.ready} label="ready to serve" />
-              </div>
-            )}
-          </div>
-          <p className="text-sm text-muted">Works offline · syncs across every device in the store</p>
-        </section>
+        </div>
+        <div>
+          <p className="text-lg text-rail-ink">{greeting(now)}</p>
+          <p className="display mt-1 text-[clamp(4rem,8vw,6rem)] leading-none tracking-[-0.03em]">{time}</p>
+          <p className="mt-3 text-xl text-rail-ink">{now?.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</p>
+          {service && (
+            <dl className="mt-10 grid max-w-md grid-cols-3 divide-x divide-rail-ink/30 rounded-lg border border-rail-ink/30">
+              <ServiceCell label="Open checks" value={service.open} />
+              <ServiceCell label="In kitchen" value={service.kitchen} />
+              <ServiceCell label="Ready" value={service.ready} />
+            </dl>
+          )}
+        </div>
+        <p className="text-sm text-rail-ink">Works offline · syncs across every device in the store</p>
+      </section>
 
-        <section className="flex flex-col items-center justify-center p-6">
-          <div className="glass anim-rise w-full max-w-[400px] rounded-[2rem] border border-line p-7 shadow-pop">
-            <div className="mb-6 flex flex-col items-center text-center lg:hidden">
-              <Logo className="mb-3 size-14" />
-              <p className="display text-lg font-semibold">{settings?.businessName ?? "POS"}</p>
-              <p className="display mt-2 text-4xl font-semibold">{now?.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</p>
+      <section className="flex flex-col items-center justify-center p-6">
+        <div className="anim-pop w-full max-w-[380px]">
+          <div className="mb-8 flex items-center gap-3 lg:hidden">
+            <Logo name={settings?.businessName} className="size-11 shrink-0 text-brand-ink" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-bold">{settings?.businessName ?? "Cafe POS"}</p>
+              <p className="text-sm text-muted">{now?.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}</p>
             </div>
-            <h1 className="text-center text-2xl font-bold">Enter your PIN</h1>
-            <p className="mb-5 mt-1 text-center text-muted">Tap your 4-digit staff PIN to start your shift</p>
-            {staffCount === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-6 text-center text-muted">
-                <Spinner className="size-7" />
-                <p>{status.state === "offline" ? "Waiting for connection to download staff accounts…" : "Downloading store data…"}</p>
-              </div>
-            ) : (
-              <PinPad
-                error={error}
-                onComplete={async (pin) => {
-                  const s = await findStaffByPin(pin);
-                  if (!s) {
-                    setError("Incorrect PIN. Try again.");
-                    return false;
-                  }
-                  setError("");
-                  await setMeta("session", { staffId: s.id, at: Date.now() });
-                  return true;
-                }}
-              />
-            )}
+            <p className="display text-2xl">{time}</p>
           </div>
+          <h1 className="text-2xl font-bold tracking-[-0.015em]">Enter your PIN</h1>
+          <p className="mb-6 mt-1 text-ink-2">Tap your 4-digit staff PIN to start your shift.</p>
+          {staffCount === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-line bg-surface py-10 text-center text-ink-2">
+              <Spinner className="size-7" />
+              <p>{status.state === "offline" ? "Waiting for connection to download staff accounts…" : "Downloading store data…"}</p>
+            </div>
+          ) : (
+            <PinPad
+              error={error}
+              onComplete={async (pin) => {
+                const s = await findStaffByPin(pin);
+                if (!s) {
+                  setError("Incorrect PIN. Try again.");
+                  return false;
+                }
+                setError("");
+                await setMeta("session", { staffId: s.id, at: Date.now() });
+                return true;
+              }}
+            />
+          )}
           {demo && (
-            <div className="mt-5 max-w-[400px] rounded-2xl border border-dashed border-line-strong px-4 py-3 text-center text-sm text-muted">
-              <p className="font-semibold text-ink-2">Demo PINs</p>
-              Admin <b className="tabular text-ink">{DEFAULT_PINS.admin}</b> · Manager <b className="tabular text-ink">{DEFAULT_PINS.manager}</b> · Cashier{" "}
-              <b className="tabular text-ink">{DEFAULT_PINS.cashier}</b> · Kitchen <b className="tabular text-ink">{DEFAULT_PINS.kitchen}</b>
-              <p className="mt-1 text-xs">Change the admin PIN in Settings → Staff to hide this.</p>
+            <div className="mt-6 rounded-lg border border-dashed border-line-strong px-4 py-3 text-sm text-ink-2">
+              <ColHead>Demo PINs</ColHead>
+              <p className="mt-1 tabular-nums">
+                Admin <b className="text-ink">{DEFAULT_PINS.admin}</b> · Manager <b className="text-ink">{DEFAULT_PINS.manager}</b> · Cashier{" "}
+                <b className="text-ink">{DEFAULT_PINS.cashier}</b> · Kitchen <b className="text-ink">{DEFAULT_PINS.kitchen}</b>
+              </p>
+              <p className="mt-1 text-xs text-muted">Change the admin PIN in Settings → Staff to hide this.</p>
             </div>
           )}
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
 
-function ServiceStat({ value, label }: { value: number; label: string }) {
+function ServiceCell({ value, label }: { value: number; label: string }) {
   return (
-    <div className="glass min-w-28 rounded-2xl border border-line px-4 py-3">
-      <p className="display text-3xl font-semibold text-brand-ink">{value}</p>
-      <p className="text-sm text-muted">{label}</p>
+    <div className="px-4 py-3">
+      <dt className="cond text-[11px] text-rail-ink">{label}</dt>
+      <dd className="display mt-0.5 text-3xl">{value}</dd>
     </div>
   );
 }
@@ -361,11 +346,10 @@ function Shell() {
   })();
 
   return (
-    <div className="relative flex h-dvh overflow-hidden">
-      <Ambient />
-      {/* Desktop / landscape tablet rail */}
-      <nav className="glass relative z-10 hidden w-[92px] shrink-0 flex-col items-center gap-1.5 border-r border-line py-4 lg:flex">
-        <Logo className="mb-4 size-12" />
+    <div className="flex h-dvh overflow-hidden bg-bg">
+      {/* Desktop / landscape tablet rail: printed green, like the pad's cover. */}
+      <nav aria-label="Main" className="hidden w-[84px] shrink-0 flex-col items-center gap-1 bg-rail py-4 text-rail-ink lg:flex">
+        <Logo name={settings.businessName} className="mb-5 size-11 text-rail-on" />
         {items.map((n) => {
           const on = active === n.view;
           return (
@@ -374,38 +358,38 @@ function Shell() {
               onClick={() => go(n.view)}
               aria-current={on ? "page" : undefined}
               className={cx(
-                "relative flex w-[74px] flex-col items-center gap-1 rounded-2xl py-2.5 text-[11px] font-semibold transition",
-                on ? "bg-brand-soft text-brand-ink" : "text-muted hover:bg-surface-3/70 hover:text-ink",
+                "flex w-[68px] flex-col items-center gap-1 rounded-lg py-2.5 text-[11px] font-semibold transition-colors duration-150",
+                on ? "bg-rail-on text-rail dark:bg-brand-soft dark:text-brand-ink" : "hover:bg-rail-on/10 hover:text-rail-on",
               )}
             >
-              <n.icon className="size-[22px]" strokeWidth={on ? 2.4 : 2} />
+              <n.icon className="size-[22px]" strokeWidth={on ? 2.25 : 1.9} />
               {n.label}
             </button>
           );
         })}
         <div className="flex-1" />
-        <button onClick={lock} className="flex w-[72px] flex-col items-center gap-1 rounded-2xl py-2.5 text-[11px] font-semibold text-muted transition hover:bg-surface-3 hover:text-ink">
-          <Lock className="size-[22px]" />
+        <button onClick={lock} className="flex w-[68px] flex-col items-center gap-1 rounded-lg py-2.5 text-[11px] font-semibold transition-colors hover:bg-rail-on/10 hover:text-rail-on">
+          <Lock className="size-[22px]" strokeWidth={1.9} />
           Lock
         </button>
       </nav>
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="glass flex min-h-15 shrink-0 items-center gap-3 border-b border-line px-3 pt-[env(safe-area-inset-top)] sm:px-5">
-          <Logo className="size-9 lg:hidden" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-3 pt-[env(safe-area-inset-top)] sm:px-5">
+          <Logo name={settings.businessName} className="size-9 shrink-0 text-[12px] text-brand-ink lg:hidden" />
           <div className="min-w-0 flex-1">
-            <p className="display truncate text-[15px] font-semibold leading-tight">{settings.businessName}</p>
+            <p className="truncate text-[15px] font-bold leading-tight">{settings.businessName}</p>
             <p className="truncate text-xs text-muted">
               {staff.name} · {ROLE_LABEL[staff.role]}
             </p>
           </div>
           <SyncIndicator />
-          <button onClick={lock} className="hidden h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-ink-2 hover:bg-surface-3 sm:flex lg:hidden" aria-label="Lock">
+          <button onClick={lock} className="hidden h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink-2 hover:bg-surface-3 sm:flex lg:hidden" aria-label="Lock">
             <Lock className="size-4" /> Lock
           </button>
         </header>
         {!online && (
-          <div className="flex shrink-0 items-center justify-center gap-2 bg-amber-100 px-3 py-1.5 text-center text-[13px] font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+          <div role="status" className="flex shrink-0 items-center justify-center gap-2 border-b border-warn-line bg-warn-soft px-3 py-1.5 text-center text-[13px] font-semibold text-warn">
             <Wifi className="size-4" />
             Offline — everything is saved on this device{pending ? ` (${pending} change${pending === 1 ? "" : "s"} waiting)` : ""} and will sync automatically.
           </div>
@@ -414,23 +398,32 @@ function Shell() {
 
         {/* Phone / portrait tablet tab bar */}
         {items.length > 1 && (
-          <nav className="glass flex shrink-0 border-t border-line pb-[env(safe-area-inset-bottom)] lg:hidden">
-            {primary.map((n) => (
-              <button
-                key={n.view}
-                onClick={() => go(n.view)}
-                className={cx("flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold", active === n.view ? "text-brand-ink" : "text-muted")}
-              >
-                <n.icon className="size-[22px]" />
-                {n.label}
-              </button>
-            ))}
-            {(secondary.length > 0 || true) && (
-              <button onClick={() => setMoreOpen(true)} className={cx("flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold", secondary.some((s) => s.view === active) ? "text-brand" : "text-muted")}>
-                <MoreHorizontal className="size-[22px]" />
-                More
-              </button>
-            )}
+          <nav aria-label="Main" className="flex shrink-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
+            {primary.map((n) => {
+              const on = active === n.view;
+              return (
+                <button
+                  key={n.view}
+                  onClick={() => go(n.view)}
+                  aria-current={on ? "page" : undefined}
+                  className={cx("flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold", on ? "text-brand-ink" : "text-muted")}
+                >
+                  <span className={cx("flex h-7 w-12 items-center justify-center rounded-lg transition-colors", on && "bg-brand-soft")}>
+                    <n.icon className="size-5" />
+                  </span>
+                  {n.label}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setMoreOpen(true)}
+              className={cx("flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold", secondary.some((s) => s.view === active) ? "text-brand-ink" : "text-muted")}
+            >
+              <span className={cx("flex h-7 w-12 items-center justify-center rounded-lg", secondary.some((s) => s.view === active) && "bg-brand-soft")}>
+                <MoreHorizontal className="size-5" />
+              </span>
+              More
+            </button>
           </nav>
         )}
       </div>
@@ -444,7 +437,7 @@ function Shell() {
                 setMoreOpen(false);
                 go(n.view);
               }}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-line bg-surface-2 py-5 text-sm font-semibold hover:bg-surface-3"
+              className="flex flex-col items-center gap-2 rounded-xl border border-line bg-surface py-5 text-sm font-semibold transition-colors hover:border-line-strong hover:bg-surface-2"
             >
               <n.icon className="size-6 text-brand-ink" />
               {n.label}
@@ -455,7 +448,7 @@ function Shell() {
               setMoreOpen(false);
               lock();
             }}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-line bg-surface-2 py-5 text-sm font-semibold hover:bg-surface-3"
+            className="flex flex-col items-center gap-2 rounded-xl border border-line bg-surface py-5 text-sm font-semibold transition-colors hover:border-line-strong hover:bg-surface-2"
           >
             <Lock className="size-6 text-brand-ink" />
             Lock / switch user

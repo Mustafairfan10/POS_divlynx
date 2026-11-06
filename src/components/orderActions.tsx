@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, Users } from "lucide-react";
+import { AlertTriangle, Check, Minus, Plus, Users } from "lucide-react";
 import { db, stripLocal } from "@/client/db";
 import {
   logEntry,
@@ -18,11 +18,53 @@ import { centsToInput, formatMoney, METHOD_LABEL, parseMoney, uid } from "@/lib/
 import type { Customer, Discount, Order, OrderItem, Payment, PaymentMethod } from "@/lib/types";
 import { printNode } from "./print";
 import { Receipt } from "./Receipt";
-import { Badge, Button, Field, Input, Modal, Segmented, Textarea, cx, useConfirm, useToast } from "./ui";
+import { Badge, Button, ColHead, Field, Input, Modal, Segmented, Textarea, cx, useConfirm, useToast } from "./ui";
 
 export const VOID_REASONS = ["Customer changed mind", "Entered by mistake", "Out of stock", "Quality issue", "Took too long"];
 export const CANCEL_REASONS = ["Customer changed mind", "Duplicate order", "Entered by mistake", "Customer left", "Kitchen unable to prepare"];
 export const REFUND_REASONS = ["Quality issue", "Wrong item served", "Item not received", "Customer complaint", "Overcharged"];
+
+/** Selectable option button used across order dialogs (selected = brand border + soft fill). */
+function optionCls(on: boolean) {
+  return cx(
+    "h-10 rounded-lg border px-3.5 text-sm font-semibold transition-colors duration-150",
+    on ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink",
+  );
+}
+
+/** Boxed − n + stepper with 40px cells. */
+function Stepper({
+  value,
+  onDec,
+  onInc,
+  decDisabled,
+  incDisabled,
+  decLabel,
+  incLabel,
+  valueClass,
+}: {
+  value: number;
+  onDec: () => void;
+  onInc: () => void;
+  decDisabled?: boolean;
+  incDisabled?: boolean;
+  decLabel: string;
+  incLabel: string;
+  valueClass?: string;
+}) {
+  const btn = "flex size-10 items-center justify-center text-ink-2 transition-colors duration-150 hover:bg-surface-2 hover:text-ink disabled:opacity-40";
+  return (
+    <div className="flex shrink-0 items-center divide-x divide-line-strong overflow-hidden rounded-lg border border-line-strong bg-surface">
+      <button type="button" className={btn} disabled={decDisabled} onClick={onDec} aria-label={decLabel}>
+        <Minus className="size-4" />
+      </button>
+      <span className={cx("flex h-10 w-11 items-center justify-center text-base font-bold tabular", valueClass)}>{value}</span>
+      <button type="button" className={btn} disabled={incDisabled} onClick={onInc} aria-label={incLabel}>
+        <Plus className="size-4" />
+      </button>
+    </div>
+  );
+}
 
 export function useMoney() {
   const { settings } = useSession();
@@ -229,7 +271,7 @@ export function DiscountModal({ order, open, onClose }: { order: Order; open: bo
       footer={
         <>
           {order.discount && (
-            <Button variant="ghost" className="mr-auto text-rose-600" onClick={remove}>
+            <Button variant="ghost" className="mr-auto text-bad hover:text-bad" onClick={remove}>
               Remove
             </Button>
           )}
@@ -246,18 +288,23 @@ export function DiscountModal({ order, open, onClose }: { order: Order; open: bo
         <Segmented value={type} onChange={(v) => { setType(v); setValue(""); }} options={[{ value: "percent", label: "Percent %" }, { value: "amount", label: "Fixed amount" }]} />
         <div className="flex flex-wrap gap-2">
           {(type === "percent" ? ["5", "10", "15", "20", "50"] : ["1.00", "2.00", "5.00", "10.00"]).map((v) => (
-            <button key={v} onClick={() => setValue(v)} className={cx("h-10 rounded-full border px-4 text-sm font-semibold", value === v ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong")}>
+            <button key={v} type="button" onClick={() => setValue(v)} aria-pressed={value === v} className={cx(optionCls(value === v), "min-w-16 tabular")}>
               {type === "percent" ? `${v}%` : money(parseMoney(v))}
             </button>
           ))}
         </div>
         <Field label={type === "percent" ? "Percent" : "Amount"} error={value && !valid ? (type === "percent" ? "Enter 0–100" : `Max ${money(subtotal)}`) : undefined}>
-          <Input inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder={type === "percent" ? "e.g. 10" : "e.g. 5.00"} />
+          <Input inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder={type === "percent" ? "e.g. 10" : "e.g. 5.00"} className="pen tabular" />
         </Field>
         <Field label="Reason (shown on receipt)">
-          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Staff meal, Loyalty, Promo" />
+          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Staff meal, Loyalty, Promo" className="pen" />
         </Field>
-        {needsApproval && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">Discounts over {settings.discountApprovalThreshold}% need manager approval.</p>}
+        {needsApproval && (
+          <p className="flex items-start gap-2 rounded-lg border border-warn-line bg-warn-soft px-3 py-2.5 text-sm font-medium text-warn">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            Discounts over {settings.discountApprovalThreshold}% need manager approval.
+          </p>
+        )}
       </div>
     </Modal>
   );
@@ -321,14 +368,14 @@ export function CustomerModal({
     >
       <div className="space-y-3">
         <Field label="Name" error={touched ? errors.name : undefined}>
-          <Input autoFocus value={c.name} onChange={(e) => setC({ ...c, name: e.target.value })} placeholder="Customer name" />
+          <Input autoFocus value={c.name} onChange={(e) => setC({ ...c, name: e.target.value })} placeholder="Customer name" className="pen" />
         </Field>
         <Field label="Phone" error={touched ? errors.phone : undefined}>
-          <Input type="tel" inputMode="tel" value={c.phone} onChange={(e) => setC({ ...c, phone: e.target.value })} placeholder="Phone number" />
+          <Input type="tel" inputMode="tel" value={c.phone} onChange={(e) => setC({ ...c, phone: e.target.value })} placeholder="Phone number" className="pen tabular" />
         </Field>
         {requireAddress && (
           <Field label="Delivery address" error={touched ? errors.address : undefined}>
-            <Textarea value={c.address} onChange={(e) => setC({ ...c, address: e.target.value })} placeholder="Street, building, apartment, landmark" />
+            <Textarea value={c.address} onChange={(e) => setC({ ...c, address: e.target.value })} placeholder="Street, building, apartment, landmark" className="pen" />
           </Field>
         )}
       </div>
@@ -394,50 +441,73 @@ export function TablePickerModal({
 
   return (
     <Modal open={open} onClose={onClose} title="Choose a table" size="lg">
-      <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-surface-2 px-4 py-3">
-        <span className="flex items-center gap-2 font-semibold">
-          <Users className="size-5 text-muted" /> Guests
+      <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-line bg-surface-2 px-4 py-2.5">
+        <span className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+          <Users className="size-5 text-brand-ink" /> Guests
         </span>
-        <div className="flex items-center gap-2">
-          <button className="flex size-10 items-center justify-center rounded-xl bg-surface-3" onClick={() => setG((x) => Math.max(1, x - 1))} aria-label="Fewer guests">
-            <Minus className="size-4" />
-          </button>
-          <span className="w-8 text-center text-lg font-bold tabular">{g}</span>
-          <button className="flex size-10 items-center justify-center rounded-xl bg-surface-3" onClick={() => setG((x) => Math.min(50, x + 1))} aria-label="More guests">
-            <Plus className="size-4" />
-          </button>
-        </div>
+        <Stepper
+          value={g}
+          onDec={() => setG((x) => Math.max(1, x - 1))}
+          onInc={() => setG((x) => Math.min(50, x + 1))}
+          decDisabled={g <= 1}
+          decLabel="Fewer guests"
+          incLabel="More guests"
+        />
       </div>
       {areas.map((area) => (
-        <div key={area} className="mb-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">{area}</p>
+        <section key={area} className="mb-5 last:mb-0">
+          <div className="mb-2 flex items-center gap-3">
+            <ColHead>{area}</ColHead>
+            <span className="h-px flex-1 bg-line" />
+          </div>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
             {(tables ?? [])
               .filter((t) => (t.area || "Main") === area)
               .map((t) => {
                 const occ = occupied.get(t.id);
+                const sel = selectedId === t.id;
                 return (
                   <button
                     key={t.id}
+                    type="button"
                     onClick={() => pick(t.id)}
+                    aria-pressed={sel}
                     className={cx(
-                      "flex h-20 flex-col items-center justify-center rounded-2xl border-2 text-center transition active:scale-95",
-                      selectedId === t.id
+                      "relative flex h-[76px] flex-col items-center justify-center gap-1.5 rounded-xl border text-center transition-colors duration-150",
+                      sel
                         ? "border-brand bg-brand-soft"
                         : occ
-                          ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10"
-                          : "border-line bg-surface hover:border-line-strong",
+                          ? "border-dashed border-warn-line bg-warn-soft hover:border-warn"
+                          : "border-line bg-surface hover:border-line-strong hover:bg-surface-2",
                     )}
                   >
-                    <span className="text-lg font-bold">{t.name}</span>
-                    <span className="text-xs text-muted">{occ ? `#${occ[0].number}` : `${t.seats} seats`}</span>
+                    {sel && (
+                      <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-brand text-on-brand">
+                        <Check className="size-3" strokeWidth={3} />
+                      </span>
+                    )}
+                    <span
+                      className={cx(
+                        "inline-flex h-7 min-w-11 items-center justify-center rounded-md border px-2 text-[15px] font-bold tabular",
+                        sel ? "border-brand bg-brand text-on-brand" : "border-line-strong bg-surface text-ink",
+                      )}
+                    >
+                      {t.name}
+                    </span>
+                    {occ ? (
+                      <span className="text-xs font-semibold text-warn">
+                        In use · <span className="serial">#{occ[0].number}</span>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted tabular">{t.seats} seats</span>
+                    )}
                   </button>
                 );
               })}
           </div>
-        </div>
+        </section>
       ))}
-      {tables?.length === 0 && <p className="py-8 text-center text-muted">No tables yet. Add tables in Settings → Tables.</p>}
+      {tables?.length === 0 && <p className="py-8 text-center text-sm text-muted">No tables yet. Add tables in Settings → Tables.</p>}
     </Modal>
   );
 }
@@ -551,42 +621,49 @@ export function RefundModal({ order, open, onClose }: { order: Order; open: bool
         <div className="space-y-4">
           <Segmented value={mode} onChange={setMode} options={[{ value: "items", label: "By item" }, { value: "amount", label: "Custom amount" }, { value: "full", label: "Full refund" }]} />
           {mode === "items" && (
-            <div className="divide-y divide-line rounded-2xl border border-line">
-              {items.map((it) => {
-                const q = qtys[it.id] ?? 0;
-                return (
-                  <div key={it.id} className="flex items-center gap-3 px-3 py-2.5">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">
-                        {it.qty}× {it.name}
-                      </p>
-                      <p className="text-sm text-muted">{money(itemLineTotal(it))}</p>
+            <div className="overflow-hidden rounded-xl border border-line">
+              <div className="flex items-center gap-3 border-b border-line bg-surface-2 px-3 py-1.5">
+                <ColHead className="flex-1">Item</ColHead>
+                <ColHead className="w-[134px] text-center">Refund qty</ColHead>
+              </div>
+              <div className="divide-y divide-line">
+                {items.map((it) => {
+                  const q = qtys[it.id] ?? 0;
+                  return (
+                    <div key={it.id} className={cx("flex items-center gap-3 px-3 py-2 transition-colors duration-150", q > 0 && "bg-bad-soft")}>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[15px] font-semibold text-ink">
+                          <span className="tabular text-ink-2">{it.qty}×</span> {it.name}
+                        </p>
+                        <p className="text-sm text-muted tabular">{money(itemLineTotal(it))}</p>
+                      </div>
+                      <Stepper
+                        value={q}
+                        onDec={() => setQtys({ ...qtys, [it.id]: q - 1 })}
+                        onInc={() => setQtys({ ...qtys, [it.id]: q + 1 })}
+                        decDisabled={q <= 0}
+                        incDisabled={q >= it.qty}
+                        decLabel="Less"
+                        incLabel="More"
+                        valueClass={q > 0 ? "text-bad" : undefined}
+                      />
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <button className="flex size-9 items-center justify-center rounded-lg bg-surface-3 disabled:opacity-40" disabled={q <= 0} onClick={() => setQtys({ ...qtys, [it.id]: q - 1 })} aria-label="Less">
-                        <Minus className="size-4" />
-                      </button>
-                      <span className={cx("w-7 text-center font-bold tabular", q > 0 && "text-rose-600")}>{q}</span>
-                      <button className="flex size-9 items-center justify-center rounded-lg bg-surface-3 disabled:opacity-40" disabled={q >= it.qty} onClick={() => setQtys({ ...qtys, [it.id]: q + 1 })} aria-label="More">
-                        <Plus className="size-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
           {mode === "amount" && (
             <Field label="Refund amount" hint={`Up to ${money(refundable)}`}>
-              <Input inputMode="decimal" value={amountStr} onChange={(e) => setAmountStr(e.target.value)} placeholder="0.00" autoFocus />
+              <Input inputMode="decimal" value={amountStr} onChange={(e) => setAmountStr(e.target.value)} placeholder="0.00" autoFocus className="pen tabular" />
             </Field>
           )}
-          {mode === "full" && <p className="rounded-xl bg-surface-2 px-4 py-3 text-[15px]">The full remaining amount of <b>{money(refundable)}</b> will be refunded.</p>}
+          {mode === "full" && <p className="rounded-lg border border-line bg-surface-2 px-4 py-3 text-[15px] text-ink-2">The full remaining amount of <b className="tabular text-ink">{money(refundable)}</b> will be refunded.</p>}
           <div>
-            <p className="mb-1.5 text-sm font-semibold text-ink-2">Refund to</p>
+            <p className="mb-1.5 text-[13px] font-semibold text-ink-2">Refund to</p>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(METHOD_LABEL) as PaymentMethod[]).map((m) => (
-                <button key={m} onClick={() => setMethod(m)} className={cx("h-10 rounded-full border px-4 text-sm font-semibold", method === m ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong")}>
+                <button key={m} type="button" onClick={() => setMethod(m)} aria-pressed={method === m} className={optionCls(method === m)}>
                   {METHOD_LABEL[m]}
                 </button>
               ))}
@@ -594,19 +671,19 @@ export function RefundModal({ order, open, onClose }: { order: Order; open: bool
           </div>
           {method !== "cash" && (
             <Field label="Reference (optional)">
-              <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Terminal refund ref / last 4 digits" />
+              <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Terminal refund ref / last 4 digits" className="pen" />
             </Field>
           )}
           <div>
-            <p className="mb-1.5 text-sm font-semibold text-ink-2">Reason</p>
+            <p className="mb-1.5 text-[13px] font-semibold text-ink-2">Reason</p>
             <div className="mb-2 flex flex-wrap gap-2">
               {REFUND_REASONS.map((r) => (
-                <button key={r} onClick={() => setReason(r)} className={cx("rounded-full border px-3.5 py-2 text-sm font-medium", reason === r ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong")}>
+                <button key={r} type="button" onClick={() => setReason(r)} aria-pressed={reason === r} className={optionCls(reason === r)}>
                   {r}
                 </button>
               ))}
             </div>
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Or type a reason" />
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Or type a reason" className="pen" />
           </div>
           {mode === "items" && itemRefund > refundable && (
             <Badge tone="amber">Capped at the refundable amount of {money(refundable)}</Badge>
@@ -647,7 +724,7 @@ export function NoteModal({ open, onClose, initial, onSave, title = "Order note"
         </>
       }
     >
-      <Textarea autoFocus value={v} onChange={(e) => setV(e.target.value)} placeholder="e.g. Birthday — bring dessert with candle" />
+      <Textarea autoFocus value={v} onChange={(e) => setV(e.target.value)} placeholder="e.g. Birthday — bring dessert with candle" className="pen" />
     </Modal>
   );
 }

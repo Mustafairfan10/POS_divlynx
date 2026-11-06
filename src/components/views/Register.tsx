@@ -8,7 +8,6 @@ import {
   CreditCard,
   FileText,
   Lock,
-  MapPin,
   MoreHorizontal,
   Percent,
   Plus,
@@ -38,9 +37,8 @@ import {
 import { activeItems, computeTotals } from "@/lib/calc";
 import { ORDER_TYPE_LABEL, uid } from "@/lib/format";
 import type { MenuItem, Order, OrderItem, OrderType } from "@/lib/types";
-import { Badge, Button, EmptyState, Modal, Segmented, cx, useBusy, useConfirm, useToast } from "../ui";
+import { Badge, Button, ColHead, EmptyState, Modal, Segmented, cx, useBusy, useConfirm, useToast } from "../ui";
 import { ItemModal, type ItemChoice } from "../ItemModal";
-import { categoryIcon } from "../categoryIcon";
 import { OrderLines } from "../OrderLines";
 import { CustomerModal, DiscountModal, NoteModal, TablePickerModal, useMoney, useOrderActions } from "../orderActions";
 
@@ -282,18 +280,19 @@ export function RegisterView() {
 
   // ------------------------------------------------------------ render
   const cart = (
-    <div className="glass flex h-full flex-col">
-      {/* Cart header */}
-      <div className="space-y-3 p-3 pb-4 sm:p-4">
+    <div className="flex h-full flex-col bg-surface">
+      {/* Check header: serial, order type, and the boxed facts row of a guest check */}
+      <div className="space-y-3 p-3 pb-3 sm:p-4">
         <div className="flex items-center gap-2">
-          <button className="flex size-10 items-center justify-center rounded-xl hover:bg-surface-3 lg:hidden" onClick={() => setCartOpen(false)} aria-label="Close order">
+          <button className="flex size-10 items-center justify-center rounded-lg hover:bg-surface-3 lg:hidden" onClick={() => setCartOpen(false)} aria-label="Close order">
             <X className="size-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="display text-lg font-semibold leading-tight">{order.number ? `#${order.number}` : "New order"}</p>
+            <p className="flex items-baseline gap-2 leading-tight">
+              {order.number ? <span className="serial text-[26px]">#{order.number}</span> : <span className="text-xl font-bold">New check</span>}
+            </p>
             <p className="text-xs text-muted">
-              {saved ? `Started by ${order.createdBy}` : "Add items to start"}
-              {order.status === "closed" && " · Paid"}
+              {saved ? `Started by ${order.createdBy}` : "Tap menu items to start"}
             </p>
           </div>
           {order.status === "closed" && <Badge tone="green">Paid</Badge>}
@@ -311,38 +310,46 @@ export function RegisterView() {
             { value: "delivery", label: "Delivery", icon: <Bike className="size-4" />, disabled: locked },
           ]}
         />
-        {order.type === "dine_in" && (
-          <ContextButton
-            icon={<UtensilsCrossed className="size-4" />}
-            warn={!order.tableId}
-            onClick={() => !locked && setDialog("table")}
-            label={table ? `Table ${table.name}` : "Choose table"}
-            sub={table ? `${order.guests ?? 1} guest${(order.guests ?? 1) > 1 ? "s" : ""} · ${table.area}` : "Required for dine-in"}
-          />
-        )}
-        {order.type === "takeaway" && (
-          <ContextButton icon={<User className="size-4" />} onClick={() => !locked && setDialog("customer")} label={order.customer.name || "Add customer name"} sub={order.customer.phone || "Optional — for calling out the order"} />
-        )}
-        {order.type === "delivery" && (
-          <ContextButton
-            icon={<MapPin className="size-4" />}
-            warn={!order.customer.address}
-            onClick={() => !locked && setDialog("customer")}
-            label={order.customer.name ? `${order.customer.name} · ${order.customer.phone}` : "Add delivery details"}
-            sub={order.customer.address || "Name, phone and address required"}
-          />
-        )}
+        <div className="flex divide-x divide-line-strong overflow-hidden rounded-lg border border-line-strong">
+          {order.type === "dine_in" && (
+            <>
+              <FactCell label="Table" warn={!order.tableId} onClick={() => !locked && setDialog("table")}>
+                {table ? <span className="tabular">{table.name}</span> : "Choose"}
+              </FactCell>
+              <FactCell label="Guests" onClick={() => !locked && setDialog("table")} className="max-w-24">
+                <span className="tabular">{order.tableId ? (order.guests ?? 1) : "—"}</span>
+              </FactCell>
+            </>
+          )}
+          {order.type === "takeaway" && (
+            <FactCell label="Customer" onClick={() => !locked && setDialog("customer")} pen={!!order.customer.name}>
+              {order.customer.name || <span className="font-medium text-muted">Add name (optional)</span>}
+            </FactCell>
+          )}
+          {order.type === "delivery" && (
+            <FactCell label="Deliver to" warn={!order.customer.address} onClick={() => !locked && setDialog("customer")} pen={!!order.customer.address}>
+              {order.customer.address ? `${order.customer.name} · ${order.customer.address}` : "Add details"}
+            </FactCell>
+          )}
+          <FactCell label="Server" className="max-w-32">
+            {staff.name.split(" ")[0]}
+          </FactCell>
+        </div>
       </div>
 
-      <div className="stub-perf" aria-hidden />
-      {/* Lines */}
+      {/* Lines, under printed column heads */}
+      <div className="grid grid-cols-[2.25rem_1fr_auto] gap-x-3 border-y border-line-strong bg-surface-2 px-3 py-1.5 sm:px-4">
+        <ColHead>Qty</ColHead>
+        <ColHead>Item</ColHead>
+        <ColHead className="text-right">Amount</ColHead>
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 sm:px-4">
         {locked && (
-          <div className="mt-3 flex items-start gap-3 rounded-2xl bg-surface-2 p-3">
+          <div className="mt-3 flex items-start gap-3 rounded-lg border border-line bg-surface-2 p-3">
             <Lock className="mt-0.5 size-5 shrink-0 text-muted" />
             <div className="flex-1 text-sm">
               <p className="font-semibold">{order.status === "cancelled" ? "This order was cancelled" : "This order is paid and closed"}</p>
-              <p className="text-muted">{order.status === "cancelled" ? `${order.cancelled?.reason ?? ""} · ${order.cancelled?.by ?? ""}` : "Unlock with manager approval to add or change items."}</p>
+              <p className="text-ink-2">{order.status === "cancelled" ? <span className="pen">{`${order.cancelled?.reason ?? ""} · ${order.cancelled?.by ?? ""}`}</span> : "Unlock with manager approval to add or change items."}</p>
               {order.status === "closed" && (
                 <Button size="sm" variant="outline" className="mt-2" onClick={async () => (await actions.unlockClosed(order)) && setUnlocked(order.id)}>
                   Unlock to edit
@@ -352,37 +359,37 @@ export function RegisterView() {
           </div>
         )}
         {order.items.length === 0 ? (
-          <EmptyState icon={<ShoppingBag className="size-7" />} title="No items yet">
-            Tap items on the menu to add them to this order.
+          <EmptyState icon={<ShoppingBag className="size-6" />} title="No items yet">
+            Tap items on the menu to add them to this check.
           </EmptyState>
         ) : (
           <OrderLines order={order} readOnly={locked} highlightId={flashId} {...lineHandlers} />
         )}
         {order.note && (
-          <button onClick={() => setDialog("note")} className="mb-3 mt-1 flex w-full items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-left text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
-            <StickyNote className="mt-0.5 size-4 shrink-0" /> {order.note}
+          <button onClick={() => setDialog("note")} className="mb-3 mt-2 flex w-full items-start gap-2 rounded-lg border border-dashed border-line-strong px-3 py-2 text-left text-sm">
+            <StickyNote className="mt-0.5 size-4 shrink-0 text-muted" /> <span className="pen">{order.note}</span>
           </button>
         )}
       </div>
 
       {/* Totals & actions */}
-      <div className="border-t border-line bg-surface-2/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
+      <div className="border-t border-line bg-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
         <dl className="mb-3 space-y-1 text-sm">
           <TotalRow label="Subtotal" value={money(totals.subtotal)} />
           {totals.discount > 0 && <TotalRow label={`Discount${order.discount?.type === "percent" ? ` (${order.discount.value}%)` : ""}`} value={`−${money(totals.discount)}`} accent />}
           {totals.serviceCharge > 0 && <TotalRow label={`Service ${order.serviceChargeRate}%`} value={money(totals.serviceCharge)} />}
           {totals.deliveryFee > 0 && <TotalRow label="Delivery fee" value={money(totals.deliveryFee)} />}
           <TotalRow label={order.taxInclusive ? `Tax incl. ${order.taxRate}%` : `Tax ${order.taxRate}%`} value={money(totals.tax)} />
-          <div className="flex items-baseline justify-between pt-1">
-            <dt className="text-base font-bold">Total</dt>
-            <dd key={totals.total} className="display anim-bump text-[1.7rem] font-semibold text-brand-ink">{money(totals.total)}</dd>
+          <div className="rule-double mt-2 flex items-baseline justify-between pt-2">
+            <dt className="cond text-[13px] text-brand-ink">Total</dt>
+            <dd className="display text-[28px] leading-none">{money(totals.total)}</dd>
           </div>
         </dl>
         <div className="flex gap-2">
           <Button variant="outline" size="lg" className="px-3.5" onClick={() => setDialog("more")} aria-label="More actions" disabled={!saved}>
             <MoreHorizontal className="size-5" />
           </Button>
-          <Button variant="secondary" size="lg" className="flex-1" icon={<ChefHat className="size-5" />} disabled={!saved || !unsent || locked} loading={busy} onClick={send}>
+          <Button variant="outline" size="lg" className="flex-1" icon={<ChefHat className="size-5" />} disabled={!saved || !unsent || locked} loading={busy} onClick={send}>
             Send{unsent ? ` (${unsent})` : ""}
           </Button>
           <Button variant="primary" size="lg" className="flex-[1.3]" icon={<CreditCard className="size-5" />} disabled={!saved || !totals.itemCount} onClick={pay}>
@@ -397,86 +404,79 @@ export function RegisterView() {
     <div className="flex h-full">
       {/* Menu */}
       <section className="flex min-w-0 flex-1 flex-col">
-        <div className="space-y-3 px-3 pb-2 pt-3 sm:px-5 sm:pt-4">
+        <div className="space-y-2 px-3 pt-3 sm:px-5 sm:pt-4">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-muted" />
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-muted" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search menu"
-                className="glass h-12 w-full rounded-2xl border border-line pl-11 pr-10 text-[15px] outline-none transition focus:border-brand focus:ring-4 focus:ring-[var(--ring)]"
+                aria-label="Search menu"
+                className="h-11 w-full rounded-lg border border-line-strong bg-surface pl-10 pr-10 text-[15px] outline-none transition placeholder:text-muted focus:border-brand focus:ring-3 focus:ring-[var(--ring)]"
               />
               {q && (
-                <button onClick={() => setQ("")} className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted hover:bg-surface-3" aria-label="Clear search">
+                <button onClick={() => setQ("")} className="absolute right-1.5 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted hover:bg-surface-3" aria-label="Clear search">
                   <X className="size-4" />
                 </button>
               )}
             </div>
             <Button variant="outline" onClick={() => go("orders")} icon={<ClipboardList className="size-4" />} className="shrink-0">
               <span className="hidden sm:inline">Open orders</span>
-              {otherOpen > 0 && <span className="rounded-full bg-brand px-1.5 text-xs text-on-brand">{otherOpen}</span>}
+              {otherOpen > 0 && <span className="min-w-5 rounded-md bg-brand px-1 text-xs tabular-nums text-on-brand">{otherOpen}</span>}
             </Button>
           </div>
-          <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-0.5 sm:-mx-4 sm:px-4">
-            <CategoryChip active={cat === "all" && !q} onClick={() => { setCat("all"); setQ(""); }} label="All" icon={UtensilsCrossed} />
+          <div role="tablist" aria-label="Menu categories" className="-mx-3 flex overflow-x-auto border-b border-line px-3 sm:-mx-5 sm:px-5">
+            <CategoryTab active={cat === "all" && !q} onClick={() => { setCat("all"); setQ(""); }} label="All" />
             {(categories ?? []).map((c) => (
-              <CategoryChip key={c.id} active={cat === c.id && !q} color={c.color} icon={categoryIcon(c.name)} onClick={() => { setCat(c.id); setQ(""); }} label={c.name} />
+              <CategoryTab key={c.id} active={cat === c.id && !q} color={c.color} onClick={() => { setCat(c.id); setQ(""); }} label={c.name} />
             ))}
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-24 pt-2 sm:px-5 lg:pb-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-24 pt-3 sm:px-5 lg:pb-5">
           {visible.length === 0 ? (
-            <EmptyState icon={<Search className="size-7" />} title={items?.length ? "No matching items" : "Your menu is empty"}>
+            <EmptyState icon={<Search className="size-6" />} title={items?.length ? "No matching items" : "Your menu is empty"}>
               {items?.length ? "Try a different search or category." : "Add categories and items in the Menu section."}
             </EmptyState>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {visible.map((mi) => {
                 const n = qtyInCart.get(mi.id);
                 const c = catById.get(mi.categoryId);
-                const tint = c?.color ?? "#8a6a4a";
-                const Icon = categoryIcon(c?.name);
                 const pop = popped?.id === mi.id;
                 return (
                   <button
                     key={mi.id + (pop ? ":" + popped.n : "")}
                     onClick={() => tapItem(mi)}
-                    style={{
-                      backgroundImage: `linear-gradient(150deg, color-mix(in oklab, ${tint} 30%, transparent) 0%, transparent 62%)`,
-                    }}
+                    aria-label={`${mi.name}, ${money(mi.price)}${n ? `, ${n} on this check` : ""}${!mi.available ? ", sold out" : ""}`}
                     className={cx(
-                      "group relative flex min-h-[118px] flex-col justify-between overflow-hidden rounded-[1.25rem] border bg-surface p-3.5 text-left shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-pop",
-                      n ? "border-brand/60" : "border-line hover:border-line-strong",
-                      pop && "anim-tile",
-                      !mi.available && "opacity-50 saturate-50",
+                      "relative flex min-h-[100px] flex-col justify-between rounded-xl border bg-surface p-3 text-left transition-colors duration-150 hover:border-line-strong active:bg-surface-2",
+                      n ? "border-brand ring-1 ring-brand" : "border-line",
+                      pop && "anim-press",
+                      !mi.available && "bg-surface-2 text-muted",
                     )}
                   >
-                    <Icon
-                      aria-hidden
-                      className="pointer-events-none absolute -bottom-3 -right-3 size-20 opacity-[0.13] transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110"
-                      style={{ color: tint }}
-                      strokeWidth={1.5}
-                    />
-                    {pop && <span className="pointer-events-none absolute left-1/2 top-1/2 size-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/30" style={{ animation: "ripple .55s ease-out forwards" }} />}
-                    <span className="relative line-clamp-2 pr-6 text-[15px] font-semibold leading-snug">{mi.name}</span>
-                    <span className="relative mt-3 flex items-end justify-between gap-1">
-                      <span className="display text-[15px] font-semibold text-ink">{money(mi.price)}</span>
+                    <span className={cx("line-clamp-2 pr-7 text-[15px] font-semibold leading-snug", !mi.available && "text-muted")}>{mi.name}</span>
+                    <span className="mt-3 flex items-end justify-between gap-2">
                       {!mi.available ? (
                         <Badge tone="red">Sold out</Badge>
-                      ) : mi.modifierGroupIds.length ? (
-                        <span className="truncate text-right text-[11px] font-semibold text-muted">
-                          {mi.modifierGroupIds
-                            .slice(0, 2)
-                            .map((id) => groupName.get(id))
-                            .filter(Boolean)
-                            .join(" · ")}
-                          {mi.modifierGroupIds.length > 2 ? " +" : ""}
+                      ) : (
+                        <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-muted">
+                          {c?.color && <span aria-hidden className="size-2 shrink-0 rounded-[2px]" style={{ background: c.color }} />}
+                          <span className="truncate">
+                            {mi.modifierGroupIds
+                              .slice(0, 2)
+                              .map((id) => groupName.get(id))
+                              .filter(Boolean)
+                              .join(" · ")}
+                            {mi.modifierGroupIds.length > 2 ? " +" : ""}
+                          </span>
                         </span>
-                      ) : null}
+                      )}
+                      <span className={cx("shrink-0 text-[15px] font-bold tabular-nums", !mi.available && "line-through")}>{money(mi.price)}</span>
                     </span>
                     {n ? (
-                      <span key={n} className="anim-bump absolute right-2.5 top-2.5 flex min-w-6 items-center justify-center rounded-full bg-brand px-1.5 py-0.5 text-xs font-bold text-on-brand shadow-glow">{n}</span>
+                      <span className="absolute right-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-md bg-brand px-1.5 text-xs font-bold tabular-nums text-on-brand">{n}</span>
                     ) : null}
                   </button>
                 );
@@ -488,18 +488,18 @@ export function RegisterView() {
         <div className="fixed inset-x-3 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-20 lg:hidden">
           <button
             onClick={() => setCartOpen(true)}
-            className="flex h-15 w-full items-center gap-3 rounded-2xl bg-brand px-4 text-on-brand shadow-glow active:scale-[0.99]"
+            className="flex h-14 w-full items-center gap-3 rounded-xl bg-brand px-4 text-on-brand shadow-pop active:scale-[0.99]"
           >
-            <span key={totals.itemCount} className="anim-bump flex size-9 items-center justify-center rounded-xl bg-black/10 text-sm font-bold tabular">{totals.itemCount}</span>
+            <span className="flex size-8 items-center justify-center rounded-md bg-on-brand/15 text-sm font-bold tabular-nums">{totals.itemCount}</span>
             <span className="flex-1 text-left font-semibold">{order.number ? `Review #${order.number}` : "Review order"}</span>
-            <span className="display text-lg font-semibold">{money(totals.total)}</span>
+            <span className="display text-lg">{money(totals.total)}</span>
             <ChevronRight className="size-5" />
           </button>
         </div>
       </section>
 
       {/* Cart: side panel on large screens, full-screen sheet on phones/tablets */}
-      <aside className="hidden w-[390px] shrink-0 border-l border-line lg:block xl:w-[430px]">{cart}</aside>
+      <aside className="hidden w-[390px] shrink-0 border-l border-line lg:block xl:w-[420px]">{cart}</aside>
       {cartOpen && <div className="anim-sheet fixed inset-0 z-40 lg:hidden">{cart}</div>}
 
       {/* Dialogs */}
@@ -572,46 +572,61 @@ export function RegisterView() {
   );
 }
 
-function ContextButton({ icon, label, sub, onClick, warn }: { icon: React.ReactNode; label: string; sub?: string; onClick: () => void; warn?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cx(
-        "flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition hover:bg-surface-2",
-        warn ? "border-amber-300 bg-amber-50/60 dark:border-amber-500/40 dark:bg-amber-500/5" : "border-line",
-      )}
-    >
-      <span className={cx("flex size-8 shrink-0 items-center justify-center rounded-lg", warn ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" : "bg-surface-3 text-ink-2")}>{icon}</span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold">{label}</span>
-        {sub && <span className="block truncate text-xs text-muted">{sub}</span>}
-      </span>
-      <ChevronRight className="size-4 text-muted" />
+/** One boxed cell of the check's header row (TABLE | GUESTS | SERVER). */
+function FactCell({
+  label,
+  children,
+  onClick,
+  warn,
+  pen,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+  warn?: boolean;
+  pen?: boolean;
+  className?: string;
+}) {
+  const body = (
+    <>
+      <ColHead className={cx("block", warn && "text-warn")}>{label}</ColHead>
+      <span className={cx("mt-0.5 block truncate text-[15px] font-semibold", warn ? "text-warn" : pen ? "pen" : "text-ink")}>{children}</span>
+    </>
+  );
+  const cls = cx("min-w-0 flex-1 px-3 py-1.5 text-left", warn && "bg-warn-soft", className);
+  return onClick ? (
+    <button onClick={onClick} className={cx(cls, "transition-colors hover:bg-surface-2", warn && "hover:bg-warn-soft")}>
+      {body}
     </button>
+  ) : (
+    <div className={cls}>{body}</div>
   );
 }
 
-function CategoryChip({ label, active, onClick, color, icon: Icon }: { label: string; active: boolean; onClick: () => void; color?: string; icon: typeof Plus }) {
+function CategoryTab({ label, active, onClick, color }: { label: string; active: boolean; onClick: () => void; color?: string }) {
   return (
     <button
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      aria-pressed={active}
       className={cx(
-        "flex h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition",
-        active ? "border-brand bg-brand text-on-brand shadow-glow" : "glass border-line text-ink-2 hover:border-line-strong hover:text-ink",
+        "relative flex h-11 shrink-0 items-center gap-2 px-3.5 text-sm font-semibold transition-colors duration-150",
+        active ? "text-brand-ink" : "text-ink-2 hover:text-ink",
       )}
     >
-      <Icon className="size-4" style={!active && color ? { color } : undefined} />
+      {color && <span aria-hidden className="size-2 rounded-[2px]" style={{ background: color }} />}
       {label}
+      <span aria-hidden className={cx("absolute inset-x-2 -bottom-px h-[3px] rounded-t-sm transition-colors", active ? "bg-brand" : "bg-transparent")} />
     </button>
   );
 }
 
 function TotalRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="flex justify-between text-muted">
+    <div className="flex justify-between text-ink-2">
       <dt>{label}</dt>
-      <dd className={cx("tabular", accent ? "font-semibold text-emerald-600" : "text-ink-2")}>{value}</dd>
+      <dd className={cx("tabular", accent ? "font-semibold text-ok" : "text-ink")}>{value}</dd>
     </div>
   );
 }
@@ -621,9 +636,9 @@ function MoreItem({ icon: Icon, label, onClick, danger, disabled }: { icon: type
     <button
       disabled={disabled}
       onClick={onClick}
-      className={cx("flex h-13 items-center gap-3 rounded-xl px-3 text-left text-[15px] font-semibold transition hover:bg-surface-3 disabled:opacity-40", danger && "text-rose-600")}
+      className={cx("flex h-12 items-center gap-3 rounded-lg px-3 text-left text-[15px] font-semibold transition-colors hover:bg-surface-2 disabled:opacity-40", danger ? "text-bad" : "text-ink")}
     >
-      <Icon className="size-5" />
+      <Icon className={cx("size-5", !danger && "text-brand-ink")} />
       {label}
     </button>
   );

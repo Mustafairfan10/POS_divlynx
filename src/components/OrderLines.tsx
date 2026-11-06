@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Ban, ChefHat, CheckCheck, Minus, Plus, Trash2 } from "lucide-react";
+import { Ban, ChefHat, CheckCheck, ChevronDown, Minus, Plus, Trash2 } from "lucide-react";
 import { itemLineTotal } from "@/lib/calc";
 import type { Order, OrderItem } from "@/lib/types";
 import { cx } from "./ui";
@@ -8,14 +8,15 @@ import { useMoney } from "./orderActions";
 
 const STATUS_CHIP: Record<OrderItem["status"], { label: string; cls: string; icon?: typeof ChefHat } | null> = {
   new: null,
-  sent: { label: "In kitchen", cls: "bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300", icon: ChefHat },
-  ready: { label: "Ready", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300", icon: CheckCheck },
+  sent: { label: "In kitchen", cls: "bg-info-soft text-info", icon: ChefHat },
+  ready: { label: "Ready", cls: "bg-ok-soft text-ok", icon: CheckCheck },
   served: { label: "Served", cls: "bg-surface-3 text-ink-2", icon: CheckCheck },
 };
 
 /**
- * Editable list of order lines. Used by the register cart and by checkout's “Edit order” mode,
- * so the receipt slip always reflects exactly what's being edited.
+ * Editable list of order lines, laid out like a guest check (QTY · ITEM · AMOUNT).
+ * Used by the register cart and by checkout's “Edit order” mode, so the slip always
+ * reflects exactly what's being edited. A dashed qty box means "not sent to the kitchen yet".
  */
 export function OrderLines({
   order,
@@ -44,61 +45,80 @@ export function OrderLines({
       <ul className="divide-y divide-line">
         {live.map((it) => {
           const chip = STATUS_CHIP[it.status];
+          const unsent = it.status === "new";
           return (
-            <li key={it.id} className={cx("flex gap-3 px-1 py-3", highlightId === it.id && "anim-flash rounded-xl")}>
-              <button className="min-w-0 flex-1 text-left" onClick={() => onEdit(it)} disabled={readOnly}>
-                <div className="flex items-start gap-2">
-                  <span className="font-semibold leading-snug text-ink">{it.name}</span>
-                  {chip && (
-                    <span className={cx("mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-px text-[10px] font-bold uppercase tracking-wide", chip.cls)}>
-                      {chip.icon && <chip.icon className="size-3" />}
-                      {chip.label}
-                    </span>
-                  )}
-                </div>
-                {it.modifiers.length > 0 && <p className="mt-0.5 text-[13px] leading-snug text-muted">{it.modifiers.map((m) => m.name).join(" · ")}</p>}
-                {it.notes && <p className="mt-0.5 text-[13px] italic leading-snug text-amber-700 dark:text-amber-300">“{it.notes}”</p>}
+            <li
+              key={it.id}
+              className={cx("anim-line grid grid-cols-[2.25rem_1fr_auto] items-start gap-x-3 py-3", highlightId === it.id && "anim-flash")}
+            >
+              <span
+                title={unsent ? "Not sent to the kitchen yet" : undefined}
+                className={cx(
+                  "flex h-7 items-center justify-center rounded-md border text-[15px] font-bold tabular-nums",
+                  unsent ? "border-dashed border-line-strong text-ink" : "border-line bg-surface-2 text-ink-2",
+                )}
+              >
+                {it.qty}
+              </span>
+              <button className="min-w-0 text-left" onClick={() => onEdit(it)} disabled={readOnly}>
+                <span className="block font-semibold leading-snug text-ink">{it.name}</span>
+                {it.modifiers.length > 0 && <span className="pen mt-0.5 block text-[13px] leading-snug">{it.modifiers.map((m) => m.name).join(" · ")}</span>}
+                {it.notes && <span className="pen mt-0.5 block text-[13px] leading-snug">“{it.notes}”</span>}
+                {chip && (
+                  <span className={cx("mt-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-px text-[11px] font-semibold", chip.cls)}>
+                    {chip.icon && <chip.icon className="size-3" />}
+                    {chip.label}
+                  </span>
+                )}
               </button>
-              <div className="flex shrink-0 flex-col items-end gap-1.5">
-                <span className="font-semibold tabular">{money(itemLineTotal(it))}</span>
+              <div className="flex flex-col items-end gap-1.5">
+                <span className="font-semibold tabular-nums">{money(itemLineTotal(it))}</span>
                 {!readOnly && (
-                  <div className="flex items-center gap-0.5 rounded-lg bg-surface-3 p-0.5">
+                  <div className="flex items-center overflow-hidden rounded-md border border-line">
                     <button
                       onClick={() => (it.qty <= 1 ? onRemove(it) : onDecrement(it))}
-                      className="flex size-8 items-center justify-center rounded-md text-ink-2 hover:bg-line"
+                      className="flex size-8 items-center justify-center text-ink-2 transition-colors hover:bg-surface-3"
                       aria-label={it.qty <= 1 ? "Remove item" : "Decrease quantity"}
                     >
-                      {it.qty <= 1 ? <Trash2 className="size-4 text-rose-600" /> : <Minus className="size-4" />}
+                      {it.qty <= 1 ? <Trash2 className="size-4 text-bad" /> : <Minus className="size-4" />}
                     </button>
-                    <span className="w-7 text-center text-[15px] font-bold tabular">{it.qty}</span>
-                    <button onClick={() => onIncrement(it)} className="flex size-8 items-center justify-center rounded-md text-ink-2 hover:bg-line" aria-label="Increase quantity">
+                    <button
+                      onClick={() => onIncrement(it)}
+                      className="flex size-8 items-center justify-center border-l border-line text-ink-2 transition-colors hover:bg-surface-3"
+                      aria-label="Increase quantity"
+                    >
                       <Plus className="size-4" />
                     </button>
                   </div>
                 )}
-                {readOnly && <span className="text-sm text-muted tabular">× {it.qty}</span>}
               </div>
             </li>
           );
         })}
       </ul>
       {voided.length > 0 && (
-        <div className="mt-1 border-t border-dashed border-line pt-2">
-          <button onClick={() => setShowVoided((v) => !v)} className="flex items-center gap-1.5 px-1 text-[13px] font-semibold text-muted hover:text-ink">
-            <Ban className="size-3.5" />
-            {voided.length} voided / refunded item{voided.length > 1 ? "s" : ""} {showVoided ? "▴" : "▾"}
+        <div className="border-t border-dashed border-line-strong pt-2">
+          <button
+            onClick={() => setShowVoided((v) => !v)}
+            aria-expanded={showVoided}
+            className="flex items-center gap-1.5 py-1 text-[13px] font-semibold text-ink-2 hover:text-ink"
+          >
+            <Ban className="size-3.5 text-bad" />
+            {voided.length} voided / refunded item{voided.length > 1 ? "s" : ""}
+            <ChevronDown className={cx("size-3.5 transition-transform", showVoided && "rotate-180")} />
           </button>
           {showVoided && (
-            <ul className="mt-1">
+            <ul className="mt-1 pb-2">
               {voided.map((it) => (
-                <li key={it.id} className="flex justify-between gap-3 px-1 py-1.5 text-[13px] text-muted">
+                <li key={it.id} className="grid grid-cols-[2.25rem_1fr_auto] gap-x-3 py-1.5 text-[13px] text-muted">
+                  <span className="text-center tabular-nums line-through">{it.qty}</span>
                   <span className="min-w-0">
-                    <span className="line-through">
-                      {it.qty}× {it.name}
-                    </span>{" "}
-                    · {it.voided?.refunded ? "refunded" : "void"}: {it.voided?.reason} ({it.voided?.by})
+                    <span className="line-through">{it.name}</span>
+                    <span className="block">
+                      {it.voided?.refunded ? "Refunded" : "Void"}: <span className="pen">{it.voided?.reason}</span> ({it.voided?.by})
+                    </span>
                   </span>
-                  <span className="line-through tabular">{money(itemLineTotal(it))}</span>
+                  <span className="tabular-nums line-through">{money(itemLineTotal(it))}</span>
                 </li>
               ))}
             </ul>

@@ -93,7 +93,7 @@ try {
     log("Duplicate-order guard fired (identical order from another device) and was acknowledged");
   }
   await expectText("Amount due");
-  const before = await page.evaluate(() => document.querySelector(".rcpt .grand")?.textContent);
+  const before = await page.evaluate(() => document.querySelector("[data-testid=slip-total]")?.textContent);
   await shot("05-checkout");
   await click("Edit order");
   await expectText("Adjustments");
@@ -101,13 +101,13 @@ try {
   await plus[0].click();
   await sleep(500);
   await click("Checkout slip");
-  const after = await page.evaluate(() => document.querySelector(".rcpt .grand")?.textContent);
+  const after = await page.evaluate(() => document.querySelector("[data-testid=slip-total]")?.textContent);
   if (before === after) throw new Error(`Slip total did not update after edit (${before})`);
   await shot("06-checkout-edited");
   log(`Edited at checkout; slip total updated ${before?.replace("TOTAL", "")} → ${after?.replace("TOTAL", "")}`);
 
   // 5. Card decline then cash payment
-  await page.evaluate(() => [...document.querySelectorAll("button.h-20")].find((b) => b.textContent.trim() === "Card")?.click());
+  await page.evaluate(() => [...document.querySelectorAll("[role=radio], button")].find((b) => b.textContent.trim() === "Card")?.click());
   await sleep(200);
   await click("Charge");
   await expectText("Charge on terminal");
@@ -115,7 +115,7 @@ try {
   await click("Declined");
   await expectText("Payment declined");
   await sleep(700);
-  await page.evaluate(() => [...document.querySelectorAll("button.h-20")].find((b) => b.textContent.trim() === "Cash")?.click());
+  await page.evaluate(() => [...document.querySelectorAll("[role=radio], button")].find((b) => b.textContent.trim() === "Cash")?.click());
   await page.waitForSelector('input[placeholder="Other amount"]', { timeout: 5000 });
   const quick = await page.$$("::-p-text(Exact)");
   await quick[0]?.click();
@@ -204,7 +204,7 @@ try {
 
   // Kitchen bumps on device 2 → device 1 sees "Food ready" on the table
   const bumped = await p2.evaluate((tableName) => {
-    const card = [...document.querySelectorAll("article")].find((a) => a.innerText.toLowerCase().includes(("Table " + tableName).toLowerCase()) && a.innerText.includes("Classic Burger"));
+    const card = [...document.querySelectorAll("article")].find((a) => a.innerText.replace(/\s+/g, " ").toLowerCase().includes(("Table " + tableName).toLowerCase()) && a.innerText.includes("Classic Burger"));
     const btn = card && [...card.querySelectorAll("button")].find((b) => b.innerText.includes("Bump"));
     btn?.click();
     return !!btn;

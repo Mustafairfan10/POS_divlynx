@@ -25,6 +25,7 @@ import {
   Badge,
   Button,
   Card,
+  ColHead,
   EmptyState,
   Field,
   IconButton,
@@ -91,13 +92,13 @@ export function MenuView() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="glass shrink-0 border-b border-line px-4 py-3 sm:px-6">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="display text-xl font-semibold text-ink sm:text-2xl">Menu</h1>
+      <header className="shrink-0 border-b border-line bg-surface px-4 py-3 sm:px-5">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-xl font-bold tracking-[-0.01em] text-ink sm:text-[22px]">Menu</h1>
           <Segmented<Tab>
             value={tab}
             onChange={setTab}
-            className="w-full sm:w-auto sm:min-w-[22rem]"
+            className="w-full sm:w-auto sm:min-w-[24rem]"
             options={[
               { value: "items", label: "Items", icon: <UtensilsCrossed className="size-4" /> },
               { value: "categories", label: "Categories", icon: <Tags className="size-4" /> },
@@ -155,7 +156,7 @@ function ItemsTab({
   const [editing, setEditing] = useState<{ item?: MenuItem } | null>(null);
 
   const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
-  const groupIds = useMemo(() => new Set(groups.map((g) => g.id)), [groups]);
+  const groupById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
   const filter = categoryFilter !== "all" && !catById.has(categoryFilter) ? "all" : categoryFilter;
 
   const visible = useMemo(() => {
@@ -180,123 +181,174 @@ function ItemsTab({
 
   return (
     <>
-      <div className="glass shrink-0 border-b border-line px-4 py-3 sm:px-6">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
-          <div className="flex gap-2">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-              <Input
-                type="search"
-                placeholder="Search items"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="pl-9"
-                aria-label="Search items"
-              />
-            </div>
-            <Button
-              variant="primary"
-              icon={<Plus className="size-5" />}
-              onClick={() => setEditing({})}
-              disabled={categories.length === 0}
-              title={categories.length === 0 ? "Create a category first" : undefined}
-            >
-              <span className="hidden sm:inline">Add item</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
-          </div>
-          {categories.length > 0 && (
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 sm:-mx-6 sm:px-6 [scrollbar-width:none]">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {categories.length > 0 && (
+          <nav
+            aria-label="Filter by category"
+            className="shrink-0 border-b border-line bg-surface lg:w-60 lg:overflow-y-auto lg:border-b-0 lg:border-r"
+          >
+            <ColHead className="hidden px-5 pb-1 pt-4 lg:block">Categories</ColHead>
+            <div className="flex gap-1.5 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-2.5 lg:py-1.5">
               <Chip active={filter === "all"} onClick={() => setCategoryFilter("all")}>
-                All <span className="text-muted">{items.length}</span>
+                <span className="flex-1 text-left">All</span> <span className="tabular text-muted">{items.length}</span>
               </Chip>
               {categories.map((c) => (
                 <Chip key={c.id} active={filter === c.id} onClick={() => setCategoryFilter(c.id)}>
                   <Dot color={c.color} />
-                  {c.name}
-                  <span className="text-muted">{items.filter((i) => i.categoryId === c.id).length}</span>
+                  <span className="min-w-0 flex-1 truncate text-left">{c.name}</span>
+                  <span className="tabular text-muted">{items.filter((i) => i.categoryId === c.id).length}</span>
                 </Chip>
               ))}
             </div>
-          )}
-        </div>
-      </div>
+          </nav>
+        )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-        <div className="mx-auto w-full max-w-6xl">
-          {soldOut > 0 && (
-            <p className="mb-3 text-sm text-muted">
-              <Badge tone="red">{soldOut} sold out</Badge> <span className="ml-1">Flip the switch to bring items back.</span>
-            </p>
-          )}
-          {categories.length === 0 ? (
-            <EmptyState icon={<Tags className="size-7" />} title="No categories yet">
-              Create at least one category in the Categories tab, then add items to it.
-            </EmptyState>
-          ) : items.length === 0 ? (
-            <EmptyState
-              icon={<UtensilsCrossed className="size-7" />}
-              title="No menu items yet"
-              action={
-                <Button variant="primary" icon={<Plus className="size-5" />} onClick={() => setEditing({})}>
-                  Add item
-                </Button>
-              }
-            >
-              Add the dishes and drinks you sell.
-            </EmptyState>
-          ) : visible.length === 0 ? (
-            <EmptyState icon={<Search className="size-7" />} title="No matching items">
-              Try a different search or category.
-            </EmptyState>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {visible.map((item) => {
-                const cat = catById.get(item.categoryId);
-                const modCount = item.modifierGroupIds.filter((id) => groupIds.has(id)).length;
-                return (
-                  <Card key={item.id} className={cx("flex flex-col overflow-hidden", !item.available && "opacity-80")}>
-                    <button
-                      type="button"
-                      onClick={() => setEditing({ item })}
-                      className="flex min-h-[4.5rem] flex-1 items-start gap-3 px-4 pb-2 pt-3.5 text-left transition hover:bg-surface-2 active:bg-surface-3"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className={cx("truncate text-[15px] font-semibold text-ink", !item.available && "line-through decoration-muted")}>
-                          {item.name}
-                        </p>
-                        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
-                          <Dot color={cat?.color ?? UNCATEGORIZED_COLOR} />
-                          <span className="truncate">{cat?.name ?? "Uncategorized"}</span>
-                          {modCount > 0 && (
-                            <>
-                              <span aria-hidden>·</span>
-                              <span className="inline-flex shrink-0 items-center gap-1">
-                                <Layers className="size-3.5" />
-                                {modCount} modifier{modCount === 1 ? "" : "s"}
-                              </span>
-                            </>
-                          )}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-[15px] font-bold tabular-nums text-ink">{money(item.price)}</span>
-                    </button>
-                    <div className="flex min-h-12 items-center border-t border-line px-4">
-                      <Toggle
-                        checked={item.available}
-                        onChange={(v) => void setAvailable(item, v)}
-                        label={
-                          <span className={cx("text-sm", item.available ? "text-emerald-700 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
-                            {item.available ? "Available" : "Sold out"}
-                          </span>
-                        }
-                      />
-                    </div>
-                  </Card>
-                );
-              })}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="shrink-0 px-4 pt-4 sm:px-5">
+            <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
+                <Input
+                  type="search"
+                  placeholder="Search items"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="pl-9"
+                  aria-label="Search items"
+                />
+              </div>
+              <Button
+                variant="primary"
+                icon={<Plus className="size-5" />}
+                onClick={() => setEditing({})}
+                disabled={categories.length === 0}
+                title={categories.length === 0 ? "Create a category first" : undefined}
+              >
+                <span className="hidden sm:inline">Add item</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
             </div>
-          )}
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+            <div className="mx-auto w-full max-w-5xl">
+              {soldOut > 0 && (
+                <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+                  <Badge tone="red">{soldOut} sold out</Badge> <span>Flip the switch to bring items back.</span>
+                </p>
+              )}
+              {categories.length === 0 ? (
+                <Card>
+                  <EmptyState icon={<Tags className="size-6" />} title="No categories yet">
+                    Create at least one category in the Categories tab, then add items to it.
+                  </EmptyState>
+                </Card>
+              ) : items.length === 0 ? (
+                <Card>
+                  <EmptyState
+                    icon={<UtensilsCrossed className="size-6" />}
+                    title="No menu items yet"
+                    action={
+                      <Button variant="primary" icon={<Plus className="size-5" />} onClick={() => setEditing({})}>
+                        Add item
+                      </Button>
+                    }
+                  >
+                    Add the dishes and drinks you sell.
+                  </EmptyState>
+                </Card>
+              ) : visible.length === 0 ? (
+                <Card>
+                  <EmptyState icon={<Search className="size-6" />} title="No matching items">
+                    Try a different search or category.
+                  </EmptyState>
+                </Card>
+              ) : (
+                <Card>
+                  <div className={cx(ITEM_GRID, "sticky top-0 z-[1] rounded-t-xl border-b border-line bg-surface-2 py-2")}>
+                    <ColHead>Item</ColHead>
+                    <ColHead className="hidden md:block">Category</ColHead>
+                    <ColHead className="hidden md:block">Modifiers</ColHead>
+                    <ColHead className="text-right">Price</ColHead>
+                    <ColHead className="text-right">Avail.</ColHead>
+                  </div>
+                  <ul className="divide-y divide-line">
+                    {visible.map((item) => {
+                      const cat = catById.get(item.categoryId);
+                      const mods = item.modifierGroupIds.map((id) => groupById.get(id)).filter((g): g is ModifierGroup => !!g);
+                      return (
+                        <li
+                          key={item.id}
+                          className={cx(ITEM_GRID, "min-h-14 transition-colors last:rounded-b-xl hover:bg-surface-2", !item.available && "bg-surface-2/60")}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setEditing({ item })}
+                            className="group flex min-h-14 min-w-0 flex-col justify-center py-2 text-left"
+                          >
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span className={cx("truncate text-[15px] font-semibold group-hover:underline", item.available ? "text-ink" : "text-muted")}>
+                                {item.name}
+                              </span>
+                              {!item.available && <Badge tone="red">Sold out</Badge>}
+                            </span>
+                            <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted md:hidden">
+                              <Dot color={cat?.color ?? UNCATEGORIZED_COLOR} className="size-2" />
+                              <span className="truncate">{cat?.name ?? "Uncategorized"}</span>
+                              {mods.length > 0 && (
+                                <>
+                                  <span aria-hidden>·</span>
+                                  <span className="inline-flex shrink-0 items-center gap-1">
+                                    <Layers className="size-3.5" />
+                                    {mods.length} modifier{mods.length === 1 ? "" : "s"}
+                                  </span>
+                                </>
+                              )}
+                            </span>
+                          </button>
+                          <span className="hidden min-w-0 items-center gap-2 text-sm text-ink-2 md:flex">
+                            <Dot color={cat?.color ?? UNCATEGORIZED_COLOR} />
+                            <span className="truncate">{cat?.name ?? "Uncategorized"}</span>
+                          </span>
+                          <span className="hidden min-w-0 flex-wrap items-center gap-1 py-2 md:flex">
+                            {mods.length === 0 ? (
+                              <span className="text-sm text-muted">—</span>
+                            ) : (
+                              <>
+                                {mods.slice(0, 3).map((g) => (
+                                  <Badge key={g.id} tone="gray" className="max-w-[9rem]">
+                                    <span className="truncate">{g.name}</span>
+                                  </Badge>
+                                ))}
+                                {mods.length > 3 && <Badge tone="gray">+{mods.length - 3}</Badge>}
+                              </>
+                            )}
+                          </span>
+                          <span
+                            className={cx(
+                              "tabular text-right text-[15px] font-semibold",
+                              item.available ? "text-ink" : "text-muted line-through decoration-bad",
+                            )}
+                          >
+                            {money(item.price)}
+                          </span>
+                          <div className="flex justify-end">
+                            <div className="w-12">
+                              <Toggle
+                                checked={item.available}
+                                onChange={(v) => void setAvailable(item, v)}
+                                label={<span className="sr-only">{item.available ? `${item.name}: Available` : `${item.name}: Sold out`}</span>}
+                              />
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </Card>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -314,6 +366,9 @@ function ItemsTab({
   );
 }
 
+const ITEM_GRID =
+  "grid grid-cols-[minmax(0,1fr)_auto_4rem] items-center gap-x-3 pl-4 pr-5 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.6fr)_6.5rem_4rem]";
+
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
@@ -321,8 +376,9 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       onClick={onClick}
       aria-pressed={active}
       className={cx(
-        "inline-flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 text-sm font-semibold transition",
-        active ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong bg-surface text-ink-2 hover:bg-surface-3",
+        "inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition-colors duration-150 lg:h-11 lg:w-full",
+        "max-lg:border",
+        active ? "bg-brand-soft text-brand-ink max-lg:border-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink max-lg:border-line-strong",
       )}
     >
       {children}
@@ -436,7 +492,7 @@ function ItemEditor({
       footer={
         <>
           {item && (
-            <Button variant="ghost" className="mr-auto text-rose-600" icon={<Trash2 className="size-4" />} onClick={() => void remove()} disabled={busy}>
+            <Button variant="ghost" className="mr-auto text-bad hover:bg-bad-soft hover:text-bad" icon={<Trash2 className="size-4" />} onClick={() => void remove()} disabled={busy}>
               Delete
             </Button>
           )}
@@ -498,7 +554,7 @@ function ItemEditor({
                     role="checkbox"
                     aria-checked={checked}
                     onClick={() => toggleGroup(g.id)}
-                    className={cx("flex min-h-12 w-full items-center gap-3 px-3.5 py-2 text-left transition hover:bg-surface-2", checked && "bg-brand-soft/50")}
+                    className={cx("flex min-h-12 w-full items-center gap-3 px-3.5 py-2 text-left transition hover:bg-surface-2", checked && "bg-brand-soft")}
                   >
                     <span
                       className={cx(
@@ -592,7 +648,7 @@ function CategoriesTab({
 
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
         <div className="mx-auto w-full max-w-3xl">
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-sm text-muted">
@@ -606,7 +662,7 @@ function CategoriesTab({
           {categories.length === 0 ? (
             <Card>
               <EmptyState
-                icon={<Tags className="size-7" />}
+                icon={<Tags className="size-6" />}
                 title="No categories yet"
                 action={
                   <Button variant="primary" icon={<Plus className="size-5" />} onClick={() => setEditing({})}>
@@ -618,22 +674,34 @@ function CategoriesTab({
               </EmptyState>
             </Card>
           ) : (
-            <Card className="divide-y divide-line overflow-hidden">
+            <Card className="overflow-hidden">
+              <div className="flex items-center gap-3 border-b border-line bg-surface-2 px-4 py-2">
+                <ColHead className="w-6 text-right">#</ColHead>
+                <ColHead className="flex-1">Category</ColHead>
+                <ColHead className="hidden w-20 text-right sm:block">Items</ColHead>
+                <span aria-hidden className="hidden w-4 sm:block" />
+                <ColHead className="w-[8.5rem] text-right">Order</ColHead>
+              </div>
+              <ul className="divide-y divide-line">
               {categories.map((c, i) => {
                 const n = counts.get(c.id) ?? 0;
                 return (
-                  <div key={c.id} className="flex min-h-16 items-center gap-1 pl-2 pr-2 sm:pr-3">
+                  <li key={c.id} className="flex min-h-14 items-center gap-1 pl-4 pr-2 transition-colors hover:bg-surface-2">
+                    <span className="tabular w-6 shrink-0 text-right text-sm text-muted">{i + 1}</span>
                     <button
                       type="button"
                       onClick={() => setEditing({ category: c })}
-                      className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-xl px-2 text-left transition hover:bg-surface-2"
+                      className="group flex min-h-14 min-w-0 flex-1 items-center gap-3 px-2 text-left"
                     >
-                      <span className="size-9 shrink-0 rounded-xl border border-black/5" style={{ background: c.color }} aria-hidden />
+                      <span className="size-3 shrink-0 rounded-full ring-1 ring-line-strong" style={{ background: c.color }} aria-hidden />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[15px] font-semibold text-ink">{c.name}</span>
-                        <span className="block text-sm text-muted">
+                        <span className="block truncate text-[15px] font-semibold text-ink group-hover:underline">{c.name}</span>
+                        <span className="block text-[13px] text-muted sm:hidden">
                           {n} item{n === 1 ? "" : "s"}
                         </span>
+                      </span>
+                      <span className="tabular hidden w-20 shrink-0 text-right text-sm text-ink-2 sm:block">
+                        {n} item{n === 1 ? "" : "s"}
                       </span>
                       <Pencil className="hidden size-4 shrink-0 text-muted sm:block" />
                     </button>
@@ -648,12 +716,13 @@ function CategoriesTab({
                     >
                       <ArrowDown className="size-5" />
                     </IconButton>
-                    <IconButton label={`Delete ${c.name}`} className="size-11 hover:text-rose-600" onClick={() => void remove(c)}>
+                    <IconButton label={`Delete ${c.name}`} className="size-11 hover:bg-bad-soft hover:text-bad" onClick={() => void remove(c)}>
                       <Trash2 className="size-5" />
                     </IconButton>
-                  </div>
+                  </li>
                 );
               })}
+              </ul>
             </Card>
           )}
         </div>
@@ -738,7 +807,7 @@ function CategoryEditor({ category, nextSort, onClose }: { category?: Category; 
                 aria-pressed={color.toLowerCase() === s}
                 onClick={() => setColor(s)}
                 className={cx(
-                  "flex size-11 items-center justify-center rounded-xl transition active:scale-95",
+                  "flex size-11 items-center justify-center rounded-lg transition active:scale-95",
                   color.toLowerCase() === s && "ring-2 ring-ink ring-offset-2 ring-offset-surface",
                 )}
                 style={{ background: s }}
@@ -748,7 +817,7 @@ function CategoryEditor({ category, nextSort, onClose }: { category?: Category; 
             ))}
             <label
               className={cx(
-                "relative flex size-11 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-dashed border-line-strong",
+                "relative flex size-11 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-line-strong",
                 !isPreset && "ring-2 ring-ink ring-offset-2 ring-offset-surface",
               )}
               style={!isPreset ? { background: color } : undefined}
@@ -788,8 +857,8 @@ function ModifiersTab({ items, groups }: { items: MenuItem[]; groups: ModifierGr
 
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-        <div className="mx-auto w-full max-w-6xl">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+        <div className="mx-auto w-full max-w-5xl">
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-sm text-muted">Options like sizes, milks or extras that items can offer.</p>
             <Button variant="primary" icon={<Plus className="size-5" />} onClick={() => setEditing({})} className="shrink-0">
@@ -800,7 +869,7 @@ function ModifiersTab({ items, groups }: { items: MenuItem[]; groups: ModifierGr
           {groups.length === 0 ? (
             <Card>
               <EmptyState
-                icon={<SlidersHorizontal className="size-7" />}
+                icon={<SlidersHorizontal className="size-6" />}
                 title="No modifier groups yet"
                 action={
                   <Button variant="primary" icon={<Plus className="size-5" />} onClick={() => setEditing({})}>
@@ -812,36 +881,49 @@ function ModifiersTab({ items, groups }: { items: MenuItem[]; groups: ModifierGr
               </EmptyState>
             </Card>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {groups.map((g) => {
-                const used = usage.get(g.id)?.length ?? 0;
-                return (
-                  <Card key={g.id} className="overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setEditing({ group: g })}
-                      className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-surface-2 active:bg-surface-3"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[15px] font-semibold text-ink">{g.name}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <Card className="overflow-hidden">
+              <div className={cx(GROUP_GRID, "border-b border-line bg-surface-2 py-2")}>
+                <ColHead>Group</ColHead>
+                <ColHead className="hidden md:block">Rule</ColHead>
+                <ColHead className="hidden md:block">Options</ColHead>
+                <ColHead className="text-right">Used by</ColHead>
+                <span aria-hidden />
+              </div>
+              <ul className="divide-y divide-line">
+                {groups.map((g) => {
+                  const used = usage.get(g.id)?.length ?? 0;
+                  const optionText =
+                    g.options.map((o) => (o.price ? `${o.name} (${o.price > 0 ? "+" : ""}${money(o.price)})` : o.name)).join(", ") || "No options";
+                  return (
+                    <li key={g.id}>
+                      <button
+                        type="button"
+                        onClick={() => setEditing({ group: g })}
+                        className={cx(GROUP_GRID, "group min-h-14 w-full py-2.5 text-left transition-colors hover:bg-surface-2 active:bg-surface-3")}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-[15px] font-semibold text-ink group-hover:underline">{g.name}</span>
+                          <span className="mt-1 flex flex-wrap items-center gap-1.5 md:hidden">
+                            <Badge tone={g.min > 0 ? "amber" : "gray"}>{ruleText(g)}</Badge>
+                          </span>
+                          <span className="mt-1 block truncate text-[13px] text-muted md:hidden">{optionText}</span>
+                        </span>
+                        <span className="hidden md:block">
                           <Badge tone={g.min > 0 ? "amber" : "gray"}>{ruleText(g)}</Badge>
+                        </span>
+                        <span className="hidden min-w-0 text-sm text-ink-2 md:line-clamp-2">{optionText}</span>
+                        <span className="text-right">
                           <Badge tone={used ? "brand" : "gray"}>
                             {used} item{used === 1 ? "" : "s"}
                           </Badge>
-                        </div>
-                        <p className="mt-2 line-clamp-2 text-sm text-muted">
-                          {g.options
-                            .map((o) => (o.price ? `${o.name} (${o.price > 0 ? "+" : ""}${money(o.price)})` : o.name))
-                            .join(", ") || "No options"}
-                        </p>
-                      </div>
-                      <ChevronRight className="mt-0.5 size-5 shrink-0 text-muted" />
-                    </button>
-                  </Card>
-                );
-              })}
-            </div>
+                        </span>
+                        <ChevronRight className="size-4 text-muted" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
           )}
         </div>
       </div>
@@ -851,6 +933,9 @@ function ModifiersTab({ items, groups }: { items: MenuItem[]; groups: ModifierGr
     </>
   );
 }
+
+const GROUP_GRID =
+  "grid grid-cols-[minmax(0,1fr)_auto_1rem] items-center gap-x-3 px-4 md:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,2fr)_6rem_1rem]";
 
 interface OptionRow {
   id: ID;
@@ -969,7 +1054,7 @@ function GroupEditor({
       footer={
         <>
           {group && (
-            <Button variant="ghost" className="mr-auto text-rose-600" icon={<Trash2 className="size-4" />} onClick={() => void remove()} disabled={busy}>
+            <Button variant="ghost" className="mr-auto text-bad hover:bg-bad-soft hover:text-bad" icon={<Trash2 className="size-4" />} onClick={() => void remove()} disabled={busy}>
               Delete
             </Button>
           )}
@@ -1015,9 +1100,9 @@ function GroupEditor({
                     placeholder={`Option ${idx + 1}`}
                     aria-label={`Option ${idx + 1} name`}
                     maxLength={60}
-                    className={cx(errors[`opt-name-${r.id}`] && "border-rose-500")}
+                    className={cx(errors[`opt-name-${r.id}`] && "border-bad")}
                   />
-                  {errors[`opt-name-${r.id}`] && <span className="mt-1 block text-xs font-medium text-rose-600">{errors[`opt-name-${r.id}`]}</span>}
+                  {errors[`opt-name-${r.id}`] && <span className="mt-1 block text-xs font-medium text-bad">{errors[`opt-name-${r.id}`]}</span>}
                 </div>
                 <div className="w-24 shrink-0 sm:w-32">
                   <Input
@@ -1026,13 +1111,13 @@ function GroupEditor({
                     placeholder="+0.00"
                     inputMode="decimal"
                     aria-label={`Option ${idx + 1} price`}
-                    className={cx("text-right tabular-nums", errors[`opt-price-${r.id}`] && "border-rose-500")}
+                    className={cx("text-right tabular-nums", errors[`opt-price-${r.id}`] && "border-bad")}
                   />
-                  {errors[`opt-price-${r.id}`] && <span className="mt-1 block text-right text-xs font-medium text-rose-600">{errors[`opt-price-${r.id}`]}</span>}
+                  {errors[`opt-price-${r.id}`] && <span className="mt-1 block text-right text-xs font-medium text-bad">{errors[`opt-price-${r.id}`]}</span>}
                 </div>
                 <IconButton
                   label={`Remove option ${idx + 1}`}
-                  className="size-11 hover:text-rose-600"
+                  className="size-11 hover:bg-bad-soft hover:text-bad"
                   disabled={rows.length === 1}
                   onClick={() => setRows((rs) => rs.filter((x) => x.id !== r.id))}
                 >
@@ -1041,7 +1126,7 @@ function GroupEditor({
               </div>
             ))}
           </div>
-          {errors.options && <p className="mt-1 text-sm font-medium text-rose-600">{errors.options}</p>}
+          {errors.options && <p className="mt-1 text-sm font-medium text-bad">{errors.options}</p>}
           <Button
             type="button"
             variant="outline"

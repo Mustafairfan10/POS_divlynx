@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Minus, Plus } from "lucide-react";
+import { AlertCircle, Check, Lock, Minus, Plus } from "lucide-react";
 import type { MenuItem, ModifierGroup, OrderItem, SelectedModifier } from "@/lib/types";
-import { Button, Modal, Textarea, cx } from "./ui";
+import { Badge, Button, ColHead, Modal, Textarea, cx } from "./ui";
 import { useMoney } from "./orderActions";
 
 const QUICK_NOTES = ["No ice", "Extra hot", "Less ice", "No onions", "Sauce on side", "Allergy: nuts", "Gluten free", "Takeaway cup"];
@@ -96,37 +96,58 @@ export function ItemModal({
       size="md"
       footer={
         <div className="flex w-full items-center gap-3">
-          <div className="flex items-center gap-1 rounded-xl bg-surface-3 p-1">
-            <button className="flex size-10 items-center justify-center rounded-lg hover:bg-line disabled:opacity-40" disabled={qty <= 1 || locked} onClick={() => setQty((q) => q - 1)} aria-label="Decrease quantity">
+          <div className="flex shrink-0 items-center divide-x divide-line-strong overflow-hidden rounded-xl border border-line-strong bg-surface">
+            <button
+              type="button"
+              className="flex size-12 items-center justify-center text-ink-2 transition-colors duration-150 hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+              disabled={qty <= 1 || locked}
+              onClick={() => setQty((q) => q - 1)}
+              aria-label="Decrease quantity"
+            >
               <Minus className="size-4" />
             </button>
-            <span className="w-8 text-center text-lg font-bold tabular">{qty}</span>
-            <button className="flex size-10 items-center justify-center rounded-lg hover:bg-line disabled:opacity-40" disabled={locked} onClick={() => setQty((q) => Math.min(99, q + 1))} aria-label="Increase quantity">
+            <span className="flex h-12 w-12 items-center justify-center text-lg font-bold tabular text-ink">{qty}</span>
+            <button
+              type="button"
+              className="flex size-12 items-center justify-center text-ink-2 transition-colors duration-150 hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+              disabled={locked}
+              onClick={() => setQty((q) => Math.min(99, q + 1))}
+              aria-label="Increase quantity"
+            >
               <Plus className="size-4" />
             </button>
           </div>
           <Button variant="primary" size="lg" className="flex-1" onClick={submit} disabled={locked}>
-            {initial ? "Update" : "Add"} · {money(unit * qty)}
+            {initial ? "Update" : "Add"} · <span className="tabular">{money(unit * qty)}</span>
           </Button>
         </div>
       }
     >
       {locked && (
-        <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+        <p className="mb-4 flex items-start gap-2 rounded-lg border border-warn-line bg-warn-soft px-3 py-2.5 text-sm font-medium text-warn">
+          <Lock className="mt-0.5 size-4 shrink-0" />
           This item is already in the kitchen and can’t be changed. Void it and add a new one instead.
         </p>
       )}
-      <div className="space-y-5">
+      <div className="space-y-6">
         {itemGroups.map((g) => {
           const cur = selected[g.id] ?? [];
           const err = showErrors && cur.length < g.min;
+          const rule = g.min > 0 ? (g.max > 1 ? `Pick ${g.min}–${g.max}` : "Pick 1") : g.max > 1 ? `Up to ${g.max}` : "Pick 1";
           return (
-            <section key={g.id}>
-              <div className="mb-2 flex items-baseline justify-between gap-2">
-                <h3 className="font-bold">{g.name}</h3>
-                <span className={cx("text-xs font-semibold", err ? "text-rose-600" : "text-muted")}>
-                  {g.min > 0 ? `Required${g.max > 1 ? ` · pick ${g.min}–${g.max}` : ""}` : g.max > 1 ? `Optional · up to ${g.max}` : "Optional"}
-                </span>
+            <section key={g.id} aria-invalid={err || undefined}>
+              <div className="mb-2 flex items-center gap-2">
+                <ColHead className="text-[12px]">{g.name}</ColHead>
+                <span className="h-px flex-1 bg-line" />
+                <span className="text-xs text-muted tabular">{rule}</span>
+                {g.min > 0 ? (
+                  <Badge tone={err ? "red" : "brand"}>
+                    {err && <AlertCircle className="size-3" />}
+                    Required
+                  </Badge>
+                ) : (
+                  <Badge tone="gray">Optional</Badge>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {g.options.map((o) => {
@@ -134,18 +155,33 @@ export function ItemModal({
                   return (
                     <button
                       key={o.id}
+                      type="button"
+                      role={g.max === 1 ? "radio" : "checkbox"}
+                      aria-checked={on}
+                      disabled={locked}
                       onClick={() => toggle(g, o.id)}
                       className={cx(
-                        "flex min-h-14 items-center gap-2 rounded-xl border-2 px-3 py-2 text-left transition active:scale-[0.98]",
-                        on ? "border-brand bg-brand-soft" : err ? "border-rose-300" : "border-line hover:border-line-strong",
+                        "flex min-h-14 items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors duration-150 disabled:cursor-not-allowed",
+                        on
+                          ? "border-brand bg-brand-soft"
+                          : err
+                            ? "border-dashed border-bad bg-surface hover:bg-surface-2"
+                            : "border-line-strong bg-surface hover:border-brand-ink/50 hover:bg-surface-2",
+                        locked && !on && "opacity-60",
                       )}
                     >
-                      <span className={cx("flex size-5 shrink-0 items-center justify-center border-2", g.max === 1 ? "rounded-full" : "rounded-md", on ? "border-brand bg-brand text-on-brand" : "border-line-strong")}>
-                        {on && <Check className="size-3" strokeWidth={4} />}
+                      <span
+                        className={cx(
+                          "flex size-5 shrink-0 items-center justify-center border transition-colors duration-150",
+                          g.max === 1 ? "rounded-full" : "rounded-md",
+                          on ? "border-brand bg-brand text-on-brand" : "border-line-strong bg-surface",
+                        )}
+                      >
+                        {on && <Check className="size-3" strokeWidth={3.5} />}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold leading-tight">{o.name}</span>
-                        {o.price !== 0 && <span className="text-xs text-muted">+{money(o.price)}</span>}
+                        <span className={cx("block text-sm font-semibold leading-tight", on ? "text-brand-ink" : "text-ink")}>{o.name}</span>
+                        {o.price !== 0 && <span className="mt-0.5 block text-xs text-muted tabular">+{money(o.price)}</span>}
                       </span>
                     </button>
                   );
@@ -155,20 +191,32 @@ export function ItemModal({
           );
         })}
         <section>
-          <h3 className="mb-2 font-bold">Notes for kitchen</h3>
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {QUICK_NOTES.map((n) => (
-              <button
-                key={n}
-                disabled={locked}
-                onClick={() => setNotes((v) => (v.includes(n) ? v : v ? `${v}, ${n}` : n))}
-                className="rounded-full border border-line-strong px-3 py-1.5 text-[13px] font-medium hover:bg-surface-3"
-              >
-                {n}
-              </button>
-            ))}
+          <div className="mb-2 flex items-center gap-2">
+            <ColHead className="text-[12px]">Notes for kitchen</ColHead>
+            <span className="h-px flex-1 bg-line" />
+            <Badge tone="gray">Optional</Badge>
           </div>
-          <Textarea value={notes} disabled={locked} onChange={(e) => setNotes(e.target.value)} placeholder="Special instructions" className="min-h-16" />
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {QUICK_NOTES.map((n) => {
+              const used = notes.includes(n);
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => setNotes((v) => (v.includes(n) ? v : v ? `${v}, ${n}` : n))}
+                  className={cx(
+                    "h-9 rounded-lg border px-3 text-[13px] font-medium transition-colors duration-150 disabled:opacity-50",
+                    used ? "border-pen/40 bg-pen-soft text-pen" : "border-line-strong bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink",
+                  )}
+                >
+                  {used ? <Check className="-ml-0.5 mr-1 inline size-3.5 align-[-2px]" /> : <Plus className="-ml-0.5 mr-1 inline size-3.5 align-[-2px]" />}
+                  {n}
+                </button>
+              );
+            })}
+          </div>
+          <Textarea value={notes} disabled={locked} onChange={(e) => setNotes(e.target.value)} placeholder="Special instructions" className="pen min-h-16" />
         </section>
       </div>
     </Modal>

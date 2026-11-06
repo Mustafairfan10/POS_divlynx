@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, BellOff, Bike, Check, ChefHat, RotateCcw, ShoppingBag, UtensilsCrossed, XCircle } from "lucide-react";
+import { AlarmClock, AlertTriangle, Ban, Bell, BellOff, Bike, Check, CheckCheck, ChefHat, Clock, RotateCcw, ShoppingBag, StickyNote, UtensilsCrossed, XCircle } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, stripLocal } from "@/client/db";
 import { useSession } from "@/client/session";
@@ -8,11 +8,9 @@ import { useNow, useTables } from "@/client/hooks";
 import { now, updateOrder } from "@/client/repo";
 import { ORDER_TYPE_LABEL, timeAgo } from "@/lib/format";
 import type { Order, OrderItem, OrderType } from "@/lib/types";
-import { EmptyState, Segmented, cx } from "../ui";
+import { Button, EmptyState, IconButton, Segmented, cx } from "../ui";
 
 const TYPE_ICON = { dine_in: UtensilsCrossed, takeaway: ShoppingBag, delivery: Bike };
-/** Dockets hang a little crooked on the rail, like real ones. */
-const TILT = [-0.7, 0.5, -0.3, 0.8, -0.5, 0.3];
 
 function useKitchenOrders() {
   return useLiveQuery(async () => {
@@ -121,14 +119,14 @@ export function KitchenView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line p-3 glass sm:p-4">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface px-3 py-3 sm:px-5">
         <div className="mr-auto flex items-center gap-2">
-          <ChefHat className="size-6 text-brand" />
-          <h1 className="display text-xl font-semibold">Kitchen</h1>
-          <span className="rounded-full bg-brand px-2.5 py-0.5 text-sm font-bold text-on-brand">{active.length}</span>
-        <button onClick={() => setSound((s) => !s)} className="ml-1 flex size-10 items-center justify-center rounded-xl hover:bg-surface-3" aria-label={sound ? "Mute new-ticket chime" : "Unmute chime"}>
-          {sound ? <Bell className="size-5" /> : <BellOff className="size-5 text-muted" />}
-        </button>
+          <ChefHat className="size-6 text-brand-ink" />
+          <h1 className="text-[21px] font-bold tracking-[-0.01em]">Kitchen</h1>
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-brand px-2 text-sm font-bold tabular text-on-brand">{active.length}</span>
+          <IconButton onClick={() => setSound((s) => !s)} className="ml-1" label={sound ? "Mute new-ticket chime" : "Unmute chime"}>
+            {sound ? <Bell className="size-5" /> : <BellOff className="size-5 text-muted" />}
+          </IconButton>
         </div>
         <Segmented size="sm" className="w-48" value={show} onChange={setShow} options={[{ value: "active", label: "Active" }, { value: "done", label: "Recently done" }]} />
         <Segmented
@@ -140,99 +138,140 @@ export function KitchenView() {
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-6 pt-4 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-6 pt-4 sm:px-5">
         {list.length === 0 ? (
           <EmptyState icon={<ChefHat className="size-7" />} title={show === "active" ? "All caught up" : "Nothing completed yet"}>
             {show === "active" ? "New tickets appear here as soon as orders are sent — even from other devices." : "Bumped tickets show here so you can recall them."}
           </EmptyState>
         ) : (
-          <>
-            {/* The pass: a steel ticket rail the dockets hang from. */}
-            <div className="ticket-rail mb-1 hidden sm:block" aria-hidden />
-            <div className="grid items-start gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-              {list.map((o, idx) => {
-                const sent = firstSent(o);
-                const mins = (nowTs - sent) / 60000;
-                const urgency = show === "done" ? "done" : mins >= 20 ? "late" : mins >= 10 ? "warn" : "ok";
-                const Icon = TYPE_ICON[o.type];
-                const visible = o.items.filter((i) => i.sentAt);
-                const left = visible.filter((i) => i.status === "sent" && !i.voided).length;
-                return (
-                  <article
-                    key={o.id}
-                    className="docket anim-rise relative"
-                    style={{ rotate: `${TILT[idx % TILT.length]}deg`, animationDelay: `${Math.min(idx, 8) * 40}ms` }}
-                  >
-                    <span className="docket-clip" aria-hidden />
-                    <div className={cx("docket-heat", `heat-${urgency}`)} aria-hidden />
-                    <header className="flex items-start gap-3 px-4 pb-2 pt-4">
-                      <div className="min-w-0 flex-1">
-                        <p className="docket-label">
-                          <Icon className="mr-1 inline size-3.5 -translate-y-px" />
-                          {ORDER_TYPE_LABEL[o.type]}
-                          {o.type === "dine_in" && tableName(o.tableId) ? ` · Table ${tableName(o.tableId)}` : ""}
-                        </p>
-                        <p className="display mt-1 text-[1.65rem] font-semibold leading-none">{o.number}</p>
-                        {o.customer.name && <p className="mt-1 truncate text-sm font-semibold">{o.customer.name}</p>}
-                      </div>
-                      <div className="text-right">
-                        <span className={cx("docket-timer", `heat-${urgency}`)}>{timeAgo(sent, nowTs)}</span>
-                        {show === "active" && (
-                          <p className="mt-1 text-xs font-semibold opacity-70">
-                            {left} to go
-                          </p>
+          <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {list.map((o) => {
+              const sent = firstSent(o);
+              const mins = (nowTs - sent) / 60000;
+              const urgency = show === "done" ? "done" : mins >= 20 ? "late" : mins >= 10 ? "warn" : "ok";
+              const u = URGENCY[urgency];
+              const Icon = TYPE_ICON[o.type];
+              const visible = o.items.filter((i) => i.sentAt);
+              const left = visible.filter((i) => i.status === "sent" && !i.voided).length;
+              const cancelled = o.status === "cancelled";
+              return (
+                <article
+                  key={o.id}
+                  className={cx(
+                    "anim-fade flex flex-col overflow-hidden rounded-xl border border-line bg-surface transition-[border-color] duration-200",
+                    u.top,
+                    cancelled && "border-dashed",
+                  )}
+                >
+                  <header className="flex items-start gap-3 border-b border-line px-4 pb-3 pt-3.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="serial text-[26px] leading-none">#{o.number}</p>
+                      <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-ink-2">
+                        <Icon className="size-4 shrink-0 text-brand-ink" />
+                        {ORDER_TYPE_LABEL[o.type]}
+                        {o.type === "dine_in" && tableName(o.tableId) && (
+                          <span className="rounded-md border border-line-strong px-1.5 font-semibold tabular text-ink"><span className="sr-only">Table </span>{tableName(o.tableId)}</span>
                         )}
-                      </div>
-                    </header>
-                    <div className="perf" aria-hidden />
-                    <ul className="px-2 py-1">
-                      {visible.map((it) => (
+                      </p>
+                      {o.customer.name && <p className="pen mt-1 truncate text-sm font-semibold">{o.customer.name}</p>}
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={cx("inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-bold tabular", u.chip)}>
+                        {urgency === "late" ? <AlarmClock className="size-4" /> : urgency === "done" ? <CheckCheck className="size-4" /> : <Clock className="size-4" />}
+                        {timeAgo(sent, nowTs)}
+                      </span>
+                      <span className={cx("text-[11px] font-bold uppercase tracking-wide", u.word)}>{u.label}</span>
+                      {show === "active" && <span className="text-xs font-semibold tabular text-muted">{left} to go</span>}
+                    </div>
+                  </header>
+
+                  {cancelled && (
+                    <p className="flex items-center gap-2 border-b border-line bg-bad-soft px-4 py-2 text-sm font-bold uppercase tracking-wide text-bad">
+                      <Ban className="size-4" /> Cancelled
+                    </p>
+                  )}
+
+                  <ul className="divide-y divide-line">
+                    {visible.map((it) => {
+                      const isDone = it.status !== "sent" && !it.voided;
+                      return (
                         <li key={it.id}>
                           <button
-                            disabled={!!it.voided || o.status === "cancelled"}
+                            disabled={!!it.voided || cancelled}
                             onClick={() => setItem(o, it, it.status === "sent" ? "ready" : "sent")}
-                            className={cx("docket-line flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left", it.status !== "sent" && !it.voided && "is-done")}
+                            aria-pressed={isDone}
+                            className="flex min-h-12 w-full items-start gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-surface-2 disabled:cursor-default disabled:hover:bg-transparent"
                           >
-                            <span className={cx("docket-check", it.voided ? "is-void" : it.status !== "sent" && "is-on")}>
-                              {it.voided ? <XCircle className="size-4" /> : it.status !== "sent" && <Check className="size-4" strokeWidth={3} />}
+                            <span
+                              className={cx(
+                                "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-150",
+                                it.voided ? "border-bad bg-bad-soft text-bad" : isDone ? "border-ok bg-ok text-surface" : "border-line-strong bg-surface",
+                              )}
+                            >
+                              {it.voided ? <XCircle className="size-4" /> : isDone && <Check className="size-4" strokeWidth={3} />}
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="docket-item block text-[17px] font-bold leading-snug">
-                                <span className="display mr-1.5 text-[15px]">{it.qty}</span>
-                                {it.name}
-                                {it.voided && <span className="docket-void">VOID</span>}
+                              <span className="flex flex-wrap items-baseline gap-x-2 text-[17px] font-semibold leading-snug">
+                                <span className={cx("font-bold tabular", (isDone || it.voided) && "text-muted line-through decoration-2")}>{it.qty}×</span>
+                                <span className={cx("min-w-0", (isDone || it.voided) && "text-muted line-through decoration-2")}>{it.name}</span>
+                                {it.voided && (
+                                  <span className="inline-flex items-center gap-1 self-center rounded-md bg-bad-soft px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-bad">
+                                    <Ban className="size-3.5" /> Void
+                                  </span>
+                                )}
                               </span>
-                              {it.modifiers.length > 0 && <span className="block text-sm opacity-75">{it.modifiers.map((m) => m.name).join(" · ")}</span>}
-                              {it.notes && <span className="docket-note">{it.notes}</span>}
+                              {it.modifiers.length > 0 && (
+                                <span className={cx("pen mt-0.5 block text-[15px]", (isDone || it.voided) && "opacity-60")}>{it.modifiers.map((m) => m.name).join(" · ")}</span>
+                              )}
+                              {it.notes && (
+                                <span className="pen mt-1 inline-flex items-start gap-1 rounded-md bg-warn-soft px-1.5 py-0.5 text-[15px] font-semibold">
+                                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" />
+                                  {it.notes}
+                                </span>
+                              )}
                             </span>
                           </button>
                         </li>
-                      ))}
-                    </ul>
-                    {o.note && <p className="mx-4 mb-2 border-l-4 border-current pl-2 text-sm font-semibold">Note: {o.note}</p>}
-                    <div className="px-3 pb-3 pt-1">
-                      {show === "active" ? (
-                        <button className={cx("docket-bump", o.status === "cancelled" && "is-cancel")} onClick={() => bump(o)}>
-                          <Check className="size-5" strokeWidth={3} />
-                          {o.status === "cancelled" ? "Dismiss" : "Bump · all ready"}
-                        </button>
-                      ) : (
-                        <button className="docket-bump is-ghost" onClick={() => recall(o)} disabled={o.status === "cancelled"}>
-                          <RotateCcw className="size-4" /> Recall ticket
-                        </button>
-                      )}
-                    </div>
-                    {o.status === "cancelled" && <span className="docket-stamp">Cancelled</span>}
-                  </article>
-                );
-              })}
-            </div>
-          </>
+                      );
+                    })}
+                  </ul>
+                  {o.note && (
+                    <p className="mx-3 mb-1 mt-2 flex items-start gap-1.5 rounded-md bg-warn-soft px-2 py-1.5 text-sm">
+                      <StickyNote className="mt-0.5 size-4 shrink-0 text-warn" />
+                      <span>
+                        <span className="font-semibold text-ink">Note: </span>
+                        <span className="pen font-semibold">{o.note}</span>
+                      </span>
+                    </p>
+                  )}
+                  <div className="mt-auto p-3">
+                    {show === "active" ? (
+                      <Button size="lg" block variant={cancelled ? "outline" : "primary"} icon={<Check className="size-5" strokeWidth={3} />} onClick={() => bump(o)}>
+                        {cancelled ? "Dismiss" : "Bump · all ready"}
+                      </Button>
+                    ) : (
+                      <Button size="lg" block variant="outline" icon={<RotateCcw className="size-4" />} onClick={() => recall(o)} disabled={cancelled}>
+                        Recall ticket
+                      </Button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
   );
 }
+
+/** Ticket age: colour plus an icon, a word and the card's top rule, never colour alone. */
+const URGENCY = {
+  ok: { label: "On time", chip: "bg-ok-soft text-ok", word: "text-ok", top: "border-t-4 border-t-ok" },
+  warn: { label: "Getting late", chip: "bg-warn-soft text-warn", word: "text-warn", top: "border-t-4 border-t-warn" },
+  late: { label: "Late", chip: "bg-bad text-surface", word: "text-bad", top: "border-t-[6px] border-t-bad" },
+  done: { label: "Done", chip: "bg-surface-3 text-muted", word: "text-muted", top: "border-t-4 border-t-line-strong" },
+} as const;
 
 function firstSent(o: Order): number {
   const t = o.items.filter((i) => i.sentAt && i.status === "sent").map((i) => i.sentAt!);

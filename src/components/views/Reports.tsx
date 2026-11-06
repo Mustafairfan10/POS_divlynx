@@ -1,20 +1,10 @@
 "use client";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import {
-  BarChart3,
-  Banknote,
-  CalendarRange,
-  Clock,
-  Download,
-  Printer,
-  ShoppingBag,
-  Trophy,
-  Users,
-} from "lucide-react";
+import { BarChart3, CalendarRange, Download, Printer } from "lucide-react";
 import { useOrdersSince, usePaymentsByOrders, usePaymentsSince, useStaffList } from "@/client/hooks";
 import { useSession } from "@/client/session";
 import { printNode } from "@/components/print";
-import { Button, Card, EmptyState, Field, Input, Spinner, cx, useToast } from "@/components/ui";
+import { Button, Card, ColHead, EmptyState, Field, Input, Spinner, cx, useToast } from "@/components/ui";
 import { activeItems, computeTotals, itemLineTotal, summarizePayments } from "@/lib/calc";
 import { formatDate, formatDateTime, formatMoney, METHOD_LABEL, ORDER_TYPE_LABEL, startOfDay } from "@/lib/format";
 import type { Order, OrderType, Payment, PaymentMethod, Settings } from "@/lib/types";
@@ -366,13 +356,13 @@ export function ReportsView() {
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto bg-bg">
       <div className="mx-auto max-w-6xl space-y-4 p-3 pb-10 sm:p-5">
         {/* Header */}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="display text-2xl font-semibold text-ink">Reports</h1>
-            <p className="text-[15px] text-muted">{rangeLabel(range.from, range.to)}</p>
+            <h1 className="text-[22px] font-bold tracking-[-0.01em] text-ink">Reports</h1>
+            <p className="tabular text-sm text-ink-2">{rangeLabel(range.from, range.to)}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" icon={<Download className="size-4" />} onClick={onExport} disabled={!hasOrders}>
@@ -384,10 +374,15 @@ export function ReportsView() {
           </div>
         </div>
 
-        {/* Range picker */}
-        <Card className="p-3 sm:p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:pb-0" role="group" aria-label="Date range presets">
+        {/* Period bar */}
+        <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-3 lg:flex-row lg:items-end">
+          <div className="min-w-0">
+            <ColHead className="mb-1.5 block">Period</ColHead>
+            <div
+              className="flex divide-x divide-line-strong overflow-x-auto rounded-lg border border-line-strong bg-surface"
+              role="group"
+              aria-label="Date range presets"
+            >
               {PRESETS.map((p) => (
                 <button
                   key={p.value}
@@ -395,24 +390,24 @@ export function ReportsView() {
                   aria-pressed={preset === p.value}
                   onClick={() => choosePreset(p.value)}
                   className={cx(
-                    "h-11 shrink-0 whitespace-nowrap rounded-xl border px-4 text-sm font-semibold transition",
-                    preset === p.value ? "border-brand bg-brand-soft text-brand-ink" : "border-line-strong text-ink-2 hover:bg-surface-3",
+                    "h-11 shrink-0 whitespace-nowrap px-4 text-sm font-semibold transition-colors duration-150",
+                    preset === p.value ? "bg-brand text-on-brand" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
                   )}
                 >
                   {p.label}
                 </button>
               ))}
             </div>
-            <div className="grid flex-1 grid-cols-2 gap-2 lg:max-w-md lg:ml-auto">
-              <Field label="From">
-                <Input type="date" value={customFrom} max={customTo || undefined} onChange={(e) => applyCustom(e.target.value, customTo)} />
-              </Field>
-              <Field label="To">
-                <Input type="date" value={customTo} min={customFrom || undefined} onChange={(e) => applyCustom(customFrom, e.target.value)} />
-              </Field>
-            </div>
           </div>
-        </Card>
+          <div className="grid flex-1 grid-cols-2 gap-2 lg:ml-auto lg:max-w-sm">
+            <Field label="From">
+              <Input type="date" value={customFrom} max={customTo || undefined} onChange={(e) => applyCustom(e.target.value, customTo)} />
+            </Field>
+            <Field label="To">
+              <Input type="date" value={customTo} min={customFrom || undefined} onChange={(e) => applyCustom(customFrom, e.target.value)} />
+            </Field>
+          </div>
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-16">
@@ -420,7 +415,17 @@ export function ReportsView() {
           </div>
         ) : !hasOrders && !hasPayments ? (
           <Card>
-            <EmptyState icon={<BarChart3 className="size-7" />} title="No sales in this period">
+            <EmptyState
+              icon={<BarChart3 className="size-6" />}
+              title="No sales in this period"
+              action={
+                preset !== "7d" ? (
+                  <Button variant="outline" onClick={() => choosePreset("7d")}>
+                    Show last 7 days
+                  </Button>
+                ) : undefined
+              }
+            >
               Orders created between {rangeLabel(range.from, range.to)} will appear here. Try another date range.
             </EmptyState>
           </Card>
@@ -432,153 +437,218 @@ export function ReportsView() {
   );
 }
 
+// ------------------------------------------------------------------ report body
+
 function ReportBody({ report: r, money }: { report: Report; money: (c: number) => string }) {
+  const paymentsTotal = r.methods.reduce((s, m) => s + m.payments, 0);
+  const salesTotal = r.gross - r.discounts - r.adjustments;
+  const minus = (c: number) => (c ? `−${money(c)}` : money(0));
   return (
     <>
-      {/* KPIs */}
-      <section aria-label="Key figures" className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Net sales" value={money(r.net)} hint="Gross − discounts − adjustments − refunds" highlight />
-        <Kpi label="Orders" value={String(r.orderCount)} hint={`${r.itemsSold} items sold`} />
-        <Kpi label="Average order" value={money(r.avgOrder)} hint="After discounts, before tax" />
-        <Kpi label="Collected" value={money(r.collected)} hint="Approved payments − refunds" />
-        <Kpi label="Gross sales" value={money(r.gross)} hint="Item subtotals, excl. cancelled" />
-        <Kpi label="Discounts" value={money(r.discounts)} hint={r.adjustments ? `+ ${money(r.adjustments)} adjustments` : "No adjustments"} tone={r.discounts ? "neg" : undefined} />
-        <Kpi label="Refunds" value={money(r.refunds)} hint={`${r.refundCount} refund${r.refundCount === 1 ? "" : "s"}`} tone={r.refunds ? "neg" : undefined} />
-        <Kpi label="Tax collected" value={money(r.tax)} />
-        <Kpi label="Tips" value={money(r.tips)} />
-        <Kpi label="Service charges" value={money(r.serviceCharges)} hint={r.deliveryFees ? `Delivery fees ${money(r.deliveryFees)}` : undefined} />
-        <Kpi
-          label="Cancelled"
-          value={String(r.cancelledCount)}
-          hint={r.cancelledCount ? `${money(r.cancelledValue)} in items` : "None"}
-          tone={r.cancelledCount ? "neg" : undefined}
-        />
-        <Kpi
-          label="Open (unpaid)"
-          value={String(r.openCount)}
-          hint={r.openCount ? `${money(r.openDue)} still due` : "All settled"}
-          tone={r.openCount ? "warn" : undefined}
-        />
-      </section>
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        {/* Summary statement, set like a guest check */}
+        <Section title="Sales summary" label="Key figures">
+          <dl>
+            <Line label="Gross sales" hint="Item subtotals, excl. cancelled" value={money(r.gross)} />
+            <Line label="Discounts" value={minus(r.discounts)} tone={r.discounts ? "neg" : undefined} />
+            {r.adjustments > 0 && <Line label="Adjustments" value={minus(r.adjustments)} tone="neg" />}
+            <Line
+              label="Refunds"
+              hint={`${r.refundCount} refund${r.refundCount === 1 ? "" : "s"}`}
+              value={minus(r.refunds)}
+              tone={r.refunds ? "neg" : undefined}
+            />
+          </dl>
+          <div className="rule-double mt-1 flex items-end justify-between gap-3 pt-3">
+            <div className="min-w-0">
+              <ColHead className="block">Net sales</ColHead>
+              <p className="mt-0.5 text-xs leading-snug text-muted">Gross − discounts − adjustments − refunds</p>
+            </div>
+            <p className="display shrink-0 text-right text-[32px] leading-none text-ink">{money(r.net)}</p>
+          </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Payment methods */}
-        <Section title="Payment methods" icon={<Banknote className="size-5" />}>
-          <table className="w-full text-[15px]">
-            <thead>
-              <tr className="text-left text-xs font-semibold uppercase tracking-wide text-muted">
-                <th className="py-2 font-semibold">Method</th>
-                <th className="py-2 text-right font-semibold">Payments</th>
-                <th className="py-2 text-right font-semibold">Refunds</th>
-                <th className="py-2 text-right font-semibold">Net</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {r.methods.map((m) => (
-                <tr key={m.method} className={cx(!m.paymentCount && !m.refundCount && "text-muted")}>
-                  <td className="py-2.5 font-medium">{METHOD_LABEL[m.method]}</td>
-                  <td className="py-2.5 text-right tabular-nums">
-                    {money(m.payments)}
-                    <span className="block text-xs text-muted">{m.paymentCount}×</span>
-                  </td>
-                  <td className="py-2.5 text-right tabular-nums">
-                    {m.refunds ? `−${money(m.refunds)}` : money(0)}
-                    <span className="block text-xs text-muted">{m.refundCount}×</span>
-                  </td>
-                  <td className="py-2.5 text-right font-semibold tabular-nums">{money(m.net)}</td>
+          <SubHead>On top of sales</SubHead>
+          <dl>
+            <Line label="Tax collected" value={money(r.tax)} />
+            <Line label="Service charges" value={money(r.serviceCharges)} />
+            {r.deliveryFees > 0 && <Line label="Delivery fees" value={money(r.deliveryFees)} />}
+            <Line label="Tips" value={money(r.tips)} />
+            <Line label="Total billed" value={money(r.totalBilled)} strong />
+          </dl>
+
+          <SubHead>Activity</SubHead>
+          <dl>
+            <Line label="Orders" hint={`${r.itemsSold} items sold`} value={String(r.orderCount)} />
+            <Line label="Average order" hint="After discounts, before tax" value={money(r.avgOrder)} />
+            <Line label="Collected" hint="Approved payments − refunds" value={money(r.collected)} strong />
+            <Line
+              label="Cancelled"
+              hint={r.cancelledCount ? `${money(r.cancelledValue)} in items` : "None"}
+              value={String(r.cancelledCount)}
+              tone={r.cancelledCount ? "neg" : undefined}
+            />
+            <Line
+              label="Open (unpaid)"
+              hint={r.openCount ? `${money(r.openDue)} still due` : "All settled"}
+              value={String(r.openCount)}
+              tone={r.openCount ? "warn" : undefined}
+            />
+          </dl>
+        </Section>
+
+        <div className="grid gap-4">
+          {/* Payment methods */}
+          <Section title="Payment methods">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line-strong text-left">
+                  <Th>Method</Th>
+                  <Th right>Payments</Th>
+                  <Th right>Refunds</Th>
+                  <Th right>Net</Th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-line-strong font-bold">
-                <td className="py-2.5">Total</td>
-                <td className="py-2.5 text-right tabular-nums">{money(r.methods.reduce((s, m) => s + m.payments, 0))}</td>
-                <td className="py-2.5 text-right tabular-nums">{r.refunds ? `−${money(r.refunds)}` : money(0)}</td>
-                <td className="py-2.5 text-right tabular-nums">{money(r.collected)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </Section>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {r.methods.map((m) => {
+                  const idle = !m.paymentCount && !m.refundCount;
+                  const share = r.collected > 0 ? Math.max(0, Math.round((m.net / r.collected) * 100)) : 0;
+                  return (
+                    <tr key={m.method} className={cx(idle ? "text-muted" : "text-ink")}>
+                      <td className="py-2 pr-3">
+                        <span className="font-semibold">{METHOD_LABEL[m.method]}</span>
+                        <ShareBar pct={share} label={`${METHOD_LABEL[m.method]}: ${share}% of net collected`} />
+                      </td>
+                      <td className="tabular py-2 text-right">
+                        {money(m.payments)}
+                        <span className="block text-xs text-muted">{m.paymentCount}×</span>
+                      </td>
+                      <td className={cx("tabular py-2 pl-2 text-right", m.refunds > 0 && "text-bad")}>
+                        {minus(m.refunds)}
+                        <span className="block text-xs text-muted">{m.refundCount}×</span>
+                      </td>
+                      <td className="tabular py-2 pl-2 text-right font-semibold">{money(m.net)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="rule-double font-bold text-ink">
+                  <td className="pt-2.5">Total</td>
+                  <td className="tabular pt-2.5 text-right">{money(paymentsTotal)}</td>
+                  <td className={cx("tabular pt-2.5 pl-2 text-right", r.refunds > 0 && "text-bad")}>{minus(r.refunds)}</td>
+                  <td className="display pt-2.5 pl-2 text-right text-base">{money(r.collected)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </Section>
 
-        {/* Order types */}
-        <Section title="Order types" icon={<ShoppingBag className="size-5" />}>
-          <ul className="space-y-3">
-            {r.types.map((t) => {
-              const pct = r.orderCount ? Math.round((t.count / r.orderCount) * 100) : 0;
-              return (
-                <li key={t.type}>
-                  <div className="flex items-baseline justify-between gap-3 text-[15px]">
-                    <span className="font-medium text-ink">
-                      {ORDER_TYPE_LABEL[t.type]} <span className="text-sm text-muted">· {t.count} order{t.count === 1 ? "" : "s"}</span>
-                    </span>
-                    <span className="font-semibold tabular-nums">{money(t.sales)}</span>
-                  </div>
-                  <div
-                    className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-surface-3"
-                    role="meter"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={pct}
-                    aria-label={`${ORDER_TYPE_LABEL[t.type]}: ${pct}% of orders`}
-                  >
-                    <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </Section>
+          {/* Order types */}
+          <Section title="Order types">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line-strong text-left">
+                  <Th>Type</Th>
+                  <Th right>Orders</Th>
+                  <Th right>Sales</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {r.types.map((t) => {
+                  const pct = r.orderCount ? Math.round((t.count / r.orderCount) * 100) : 0;
+                  return (
+                    <tr key={t.type} className={cx(t.count ? "text-ink" : "text-muted")}>
+                      <td className="py-2 pr-3">
+                        <span className="font-semibold">{ORDER_TYPE_LABEL[t.type]}</span>
+                        <ShareBar pct={pct} label={`${ORDER_TYPE_LABEL[t.type]}: ${pct}% of orders`} />
+                      </td>
+                      <td className="tabular py-2 text-right">
+                        {t.count}
+                        <span className="block text-xs text-muted">{pct}%</span>
+                      </td>
+                      <td className="tabular py-2 pl-3 text-right font-semibold">{money(t.sales)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Section>
+        </div>
+      </div>
 
-        {/* Sales by hour */}
-        <Section title="Sales by hour" icon={<Clock className="size-5" />} className="lg:col-span-2">
-          <HourChart hours={r.hours} money={money} />
-        </Section>
+      {/* Sales by hour */}
+      <Section title="Sales by hour">
+        <HourChart hours={r.hours} money={money} />
+      </Section>
 
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         {/* Top items */}
-        <Section title="Top items" icon={<Trophy className="size-5" />}>
+        <Section title="Top items">
           {r.topItems.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted">No items sold.</p>
+            <Empty>No items sold. Items show up here once orders in this period are rung up.</Empty>
           ) : (
-            <ol className="divide-y divide-line">
-              {r.topItems.map((it, i) => (
-                <li key={it.name + i} className="flex items-center gap-3 py-2.5">
-                  <span className={cx("flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold", i < 3 ? "bg-brand-soft text-brand-ink" : "bg-surface-3 text-ink-2")}>
-                    {i + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-ink">{it.name}</span>
-                  <span className="shrink-0 text-right tabular-nums">
-                    <span className="block text-[15px] font-semibold">{it.qty} sold</span>
-                    <span className="block text-xs text-muted">{money(it.revenue)}</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
+            <table className="w-full table-fixed text-sm">
+              <thead>
+                <tr className="border-b border-line-strong text-left">
+                  <Th className="w-8">#</Th>
+                  <Th>Item</Th>
+                  <Th right className="w-16">Qty</Th>
+                  <Th right className="w-28">Sales</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {r.topItems.map((it, i) => (
+                  <tr key={it.name + i}>
+                    <td className={cx("tabular py-2 text-xs font-bold", i < 3 ? "text-brand-ink" : "text-muted")}>{i + 1}</td>
+                    <td className="truncate py-2 pr-3 font-semibold text-ink">{it.name}</td>
+                    <td className="tabular py-2 text-right font-semibold text-ink">
+                      {it.qty}
+                      <span className="sr-only"> sold</span>
+                    </td>
+                    <td className="tabular py-2 pl-3 text-right text-ink-2">{money(it.revenue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </Section>
 
         {/* Staff */}
-        <Section title="Sales by staff" icon={<Users className="size-5" />}>
+        <Section title="Sales by staff">
           {r.staff.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted">No orders.</p>
+            <Empty>No orders. Staff show up here once they ring up orders in this period.</Empty>
           ) : (
-            <ul className="divide-y divide-line">
-              {r.staff.map((s) => (
-                <li key={s.name} className="flex items-center justify-between gap-3 py-2.5">
-                  <span className="min-w-0 truncate text-[15px] font-medium text-ink">{s.name}</span>
-                  <span className="shrink-0 text-right tabular-nums">
-                    <span className="block text-[15px] font-semibold">{money(s.sales)}</span>
-                    <span className="block text-xs text-muted">
-                      {s.count} order{s.count === 1 ? "" : "s"}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <table className="w-full table-fixed text-sm">
+              <thead>
+                <tr className="border-b border-line-strong text-left">
+                  <Th>Staff</Th>
+                  <Th right className="w-20">Orders</Th>
+                  <Th right className="w-28">Sales</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {r.staff.map((s) => {
+                  const pct = salesTotal > 0 ? Math.max(0, Math.round((s.sales / salesTotal) * 100)) : 0;
+                  return (
+                    <tr key={s.name}>
+                      <td className="py-2 pr-3">
+                        <span className="block truncate font-semibold text-ink">{s.name}</span>
+                        <ShareBar pct={pct} label={`${s.name}: ${pct}% of sales`} />
+                      </td>
+                      <td className="tabular py-2 text-right text-ink-2">
+                        {s.count}
+                        <span className="sr-only"> order{s.count === 1 ? "" : "s"}</span>
+                      </td>
+                      <td className="tabular py-2 pl-3 text-right font-semibold text-ink">{money(s.sales)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </Section>
       </div>
 
-      <p className="flex items-start gap-2 text-sm text-muted">
+      <p className="flex items-start gap-2 text-[13px] text-muted">
         <CalendarRange className="mt-0.5 size-4 shrink-0" />
         Sales figures use orders created in the selected period. Payments, refunds and tenders use payments taken in the period. Net sales exclude tax, tips, service charges and delivery fees.
       </p>
@@ -586,37 +656,69 @@ function ReportBody({ report: r, money }: { report: Report; money: (c: number) =
   );
 }
 
-function Kpi({ label, value, hint, highlight, tone }: { label: string; value: string; hint?: string; highlight?: boolean; tone?: "neg" | "warn" }) {
+function Section({ title, label, children, className }: { title: string; label?: string; children: ReactNode; className?: string }) {
   return (
-    <Card className={cx("p-3.5 sm:p-4", highlight && "border-brand/40 bg-brand-soft")}>
-      <p className={cx("text-sm font-semibold", highlight ? "text-brand-ink" : "text-muted")}>{label}</p>
-      <p
+    <section aria-label={label ?? title} className={cx("rounded-xl border border-line bg-surface p-4 sm:p-5", className)}>
+      <h2 className="mb-3 text-base font-bold tracking-[-0.01em] text-ink">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Th({ children, right, className }: { children: ReactNode; right?: boolean; className?: string }) {
+  return (
+    <th scope="col" className={cx("pb-1.5 font-normal", right && "text-right", className)}>
+      <ColHead>{children}</ColHead>
+    </th>
+  );
+}
+
+function SubHead({ children }: { children: ReactNode }) {
+  return <ColHead className="mt-6 block border-b border-line-strong pb-1.5">{children}</ColHead>;
+}
+
+/** One statement row: label (with optional note) left, amount right-aligned. */
+function Line({ label, hint, value, tone, strong }: { label: string; hint?: string; value: string; tone?: "neg" | "warn"; strong?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b border-line py-2 last:border-b-0">
+      <dt className="min-w-0">
+        <span className={cx("text-sm text-ink", strong ? "font-bold" : "font-medium")}>{label}</span>
+        {hint && <span className="block text-xs leading-snug text-muted">{hint}</span>}
+      </dt>
+      <dd
         className={cx(
-          "mt-1 truncate text-xl font-bold tabular-nums sm:text-2xl",
-          highlight ? "text-brand-ink" : tone === "neg" ? "text-rose-600 dark:text-rose-400" : tone === "warn" ? "text-amber-600 dark:text-amber-400" : "text-ink",
+          "tabular shrink-0 text-right text-sm",
+          strong ? "font-bold" : "font-semibold",
+          tone === "neg" ? "text-bad" : tone === "warn" ? "text-warn" : "text-ink",
         )}
       >
         {value}
-      </p>
-      {hint && <p className="mt-0.5 text-xs leading-snug text-muted">{hint}</p>}
-    </Card>
+      </dd>
+    </div>
   );
 }
 
-function Section({ title, icon, children, className }: { title: string; icon?: ReactNode; children: ReactNode; className?: string }) {
+function ShareBar({ pct, label }: { pct: number; label: string }) {
   return (
-    <Card className={cx("p-4 sm:p-5", className)}>
-      <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-ink">
-        <span className="text-brand">{icon}</span>
-        {title}
-      </h2>
-      {children}
-    </Card>
+    <div
+      className="mt-1 h-1.5 w-full max-w-40 overflow-hidden rounded-sm bg-surface-3"
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={pct}
+      aria-label={label}
+    >
+      <div className="h-full bg-brand" style={{ width: `${Math.min(100, pct)}%` }} />
+    </div>
   );
+}
+
+function Empty({ children }: { children: ReactNode }) {
+  return <p className="rounded-lg border border-dashed border-line-strong px-4 py-6 text-center text-sm text-muted">{children}</p>;
 }
 
 function HourChart({ hours, money }: { hours: Report["hours"]; money: (c: number) => string }) {
-  if (hours.length === 0) return <p className="py-4 text-center text-sm text-muted">No orders.</p>;
+  if (hours.length === 0) return <Empty>No orders. Hourly sales show up here once orders in this period are rung up.</Empty>;
   // Show a continuous span of hours from the first to last active hour (at least 6 columns).
   let lo = hours[0].hour;
   let hi = hours[hours.length - 1].hour;
@@ -629,32 +731,53 @@ function HourChart({ hours, money }: { hours: Report["hours"]; money: (c: number
   const cols = Array.from({ length: hi - lo + 1 }, (_, i) => map.get(lo + i) ?? { hour: lo + i, sales: 0, count: 0 });
   const max = Math.max(1, ...cols.map((c) => c.sales));
   const peak = hours.reduce((a, b) => (b.sales > a.sales ? b : a));
+  const summary = `Sales by hour from ${hourLabel(lo)} to ${hourLabel(hi)}. Busiest hour ${hourLabel(peak.hour)}: ${money(peak.sales)} from ${peak.count} order${peak.count === 1 ? "" : "s"}.`;
 
   return (
-    <figure>
-      <figcaption className="mb-3 text-sm text-muted">
-        Busiest hour: <span className="font-semibold text-ink">{hourLabel(peak.hour)}</span> · {money(peak.sales)} from {peak.count} order{peak.count === 1 ? "" : "s"}
+    <figure aria-label={summary}>
+      <figcaption className="mb-2 text-sm text-ink-2">
+        Busiest hour: <span className="font-semibold text-ink">{hourLabel(peak.hour)}</span> · <span className="tabular">{money(peak.sales)}</span> from{" "}
+        {peak.count} order{peak.count === 1 ? "" : "s"}
       </figcaption>
-      <div className="overflow-x-auto">
-        <ul className="flex h-48 min-w-full items-end gap-1 sm:gap-1.5" style={{ minWidth: `${cols.length * 28}px` }}>
-          {cols.map((c) => {
-            const pct = (c.sales / max) * 100;
-            const label = `${hourLabel(c.hour)}: ${money(c.sales)}, ${c.count} order${c.count === 1 ? "" : "s"}`;
-            return (
-              <li key={c.hour} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" aria-label={label} title={label}>
-                <div className="flex w-full flex-1 items-end">
-                  <div
-                    className={cx("w-full rounded-t-md transition-all", c.sales > 0 ? "bg-brand" : "bg-surface-3")}
-                    style={{ height: c.sales > 0 ? `${Math.max(pct, 3)}%` : "3px" }}
-                  />
-                </div>
-                <span className="text-[11px] font-medium text-muted" aria-hidden>
-                  {hourLabel(c.hour)}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+      <div className="overflow-x-auto pt-8">
+        <div style={{ minWidth: `${cols.length * 32}px` }}>
+          <ul className="flex h-44 items-end gap-1 border-b border-line-strong sm:gap-1.5" aria-label="Sales per hour">
+            {cols.map((c) => {
+              const h = c.sales > 0 ? Math.max((c.sales / max) * 100, 2) : 0;
+              const label = `${hourLabel(c.hour)}: ${money(c.sales)}, ${c.count} order${c.count === 1 ? "" : "s"}`;
+              return (
+                <li
+                  key={c.hour}
+                  tabIndex={0}
+                  className="group relative flex h-full min-w-0 flex-1 items-end rounded-sm hover:bg-surface-2 focus-visible:bg-surface-2"
+                  aria-label={label}
+                  title={label}
+                >
+                  {h > 0 && (
+                    <div
+                      className="w-full rounded-t-sm bg-brand transition-colors duration-150 group-hover:bg-brand-hover group-focus-visible:bg-brand-hover"
+                      style={{ height: `${h}%` }}
+                    />
+                  )}
+                  <span
+                    className="tabular pointer-events-none absolute left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-xs font-semibold text-surface shadow-pop group-hover:block group-focus-visible:block"
+                    style={{ bottom: `${h}%` }}
+                    aria-hidden
+                  >
+                    {money(c.sales)} · {c.count}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-1.5 flex gap-1 sm:gap-1.5" aria-hidden>
+            {cols.map((c) => (
+              <span key={c.hour} className="tabular min-w-0 flex-1 text-center text-[11px] font-medium text-muted">
+                {hourLabel(c.hour)}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </figure>
   );
